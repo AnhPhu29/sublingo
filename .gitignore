@@ -47,9 +47,9 @@ next-env.d.ts
 
 # Uploads & Temp Data
 data/uploads/*
-!data/uploads/.gitkeep
 uploads/*
 !uploads/.gitkeep
+tessdata/
 temp/
 scratch/
 *.log
