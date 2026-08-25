@@ -37,11 +37,17 @@ import {
   AMBIENT_SOUND_OPTIONS,
   AmbientSoundType,
 } from "@/lib/ambientSoundGenerator";
+import {
+  parsePdfFileInBrowser,
+  getPageImageFromDb,
+  deleteBookImagesFromDb,
+} from "@/lib/clientPdfProcessor";
 
 export interface PageData {
   pageNumber: number;
   text: string;
   image?: string;
+  imageUrl?: string;
   isOcr: boolean;
   charCount: number;
   wordCount: number;
@@ -322,10 +328,24 @@ export const ReaderSection: React.FC = () => {
   const [isSleepMenuOpen, setIsSleepMenuOpen] = useState<boolean>(false);
   const [is3dFlipping, setIs3dFlipping] = useState<"next" | "prev" | null>(null);
   const [failedPageImages, setFailedPageImages] = useState<Record<string, boolean>>({});
+  const [loadedDbImages, setLoadedDbImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setFailedPageImages({});
+    setLoadedDbImages({});
   }, [currentBook?.docId]);
+
+  useEffect(() => {
+    if (!currentBook) return;
+    const key = `${currentBook.docId}_${currentPage}`;
+    if (!loadedDbImages[key]) {
+      getPageImageFromDb(currentBook.docId, currentPage).then((img) => {
+        if (img) {
+          setLoadedDbImages((prev) => ({ ...prev, [key]: img }));
+        }
+      });
+    }
+  }, [currentBook?.docId, currentPage]);
 
   useEffect(() => {
     autoNextPageRef.current = autoNextPage;
@@ -1066,42 +1086,77 @@ export const ReaderSection: React.FC = () => {
     }
 
     setIsLoading(true);
-    setLoadingStage("Đang nạp dữ liệu và kiểm tra cấu trúc file PDF...");
+    setLoadingStage("Đang chuẩn bị bộ giải mã PDF...");
 
     try {
-      const formData = new FormData();
-      formData.append("lang", ocrLang);
+      let parsedBook: BookDocument | null = null;
 
+      // 1. 🔥 ƯU TIÊN TRÍCH XUẤT TRỰC TIẾP TRÊN TRÌNH DUYỆT (Tạo ảnh Canvas 1:1 + Text)
       if (inputTab === "file" && selectedFile) {
-        formData.append("file", selectedFile, selectedFile.name);
-        setLoadingStage(`Đang tải lên file "${selectedFile.name}" và trích xuất text...`);
-      } else {
-        formData.append("url", urlInput.trim());
-        setLoadingStage("Đang tải file PDF từ link URL và phân tích nội dung...");
+        try {
+          const clientBook = await parsePdfFileInBrowser(
+            selectedFile,
+            selectedFile.name,
+            (stage, percent) => {
+              setLoadingStage(`${stage} (${percent}%)`);
+            }
+          );
+          parsedBook = clientBook as BookDocument;
+        } catch (clientErr) {
+          console.warn("Client PDF.js parsing fallback to API:", clientErr);
+        }
       }
 
-      const res = await fetch("/api/reader/extract", {
-        method: "POST",
-        body: formData,
-      });
+      // 2. Nếu là Link URL hoặc Client trích xuất cần fallback API
+      if (!parsedBook) {
+        const formData = new FormData();
+        formData.append("lang", ocrLang);
 
-      const data = await res.json();
+        if (inputTab === "file" && selectedFile) {
+          formData.append("file", selectedFile, selectedFile.name);
+          setLoadingStage(`Đang tải lên file "${selectedFile.name}"...`);
+        } else {
+          formData.append("url", urlInput.trim());
+          setLoadingStage("Đang tải file PDF từ link URL...");
+        }
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Không thể trích xuất nội dung từ file PDF.");
+        const res = await fetch("/api/reader/extract", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Không thể trích xuất nội dung từ file PDF.");
+        }
+
+        parsedBook = {
+          docId: data.docId || `doc_${Date.now()}`,
+          fileName: data.fileName || (selectedFile ? selectedFile.name : "Online_Book.pdf"),
+          totalPages: data.totalPages || data.pages.length,
+          ocrPagesCount: data.ocrPagesCount || 0,
+          totalCharCount: data.totalCharCount || 0,
+          totalWordCount: data.totalWordCount || 0,
+          pages: data.pages || [],
+          hasPdfPages: data.hasPdfPages ?? true,
+          lastPageRead: 1,
+          savedAt: Date.now(),
+        };
       }
 
-      const newBook: BookDocument = {
-        docId: data.docId || `doc_${Date.now()}`,
-        fileName: data.fileName || (selectedFile ? selectedFile.name : "Online_Book.pdf"),
-        totalPages: data.totalPages || data.pages.length,
-        ocrPagesCount: data.ocrPagesCount || 0,
-        totalCharCount: data.totalCharCount || 0,
-        totalWordCount: data.totalWordCount || 0,
-        pages: data.pages || [],
-        hasPdfPages: data.hasPdfPages ?? true,
-        lastPageRead: 1,
-        savedAt: Date.now(),
+      const newBook = parsedBook;
+
+      // Lưu trữ phiên bản nhẹ vào localStorage (loại bỏ base64 ảnh nặng để không tràn dung lượng)
+      const storageBook: BookDocument = {
+        ...newBook,
+        pages: newBook.pages.map((p) => ({
+          pageNumber: p.pageNumber,
+          text: p.text,
+          charCount: p.charCount || p.text.length,
+          wordCount: p.wordCount || (p.text ? p.text.split(/\s+/).length : 0),
+          isOcr: p.isOcr || false,
+        })),
       };
 
       setCurrentBook(newBook);
@@ -1114,15 +1169,16 @@ export const ReaderSection: React.FC = () => {
 
       // Save to storage
       try {
-        localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(newBook));
+        localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(storageBook));
       } catch {}
+
       setHistoryList((prev) => {
         const filtered = prev.filter(
           (b) =>
             b.docId !== newBook.docId &&
             b.fileName.toLowerCase().trim() !== newBook.fileName.toLowerCase().trim()
         );
-        const next = deduplicateBooks([newBook, ...filtered]).slice(0, 30);
+        const next = deduplicateBooks([storageBook, ...filtered]).slice(0, 30);
         try {
           localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(next));
         } catch {}
@@ -1144,7 +1200,6 @@ export const ReaderSection: React.FC = () => {
     currentBookRef.current = book;
     const pageToRead = book.lastPageRead || 1;
     setCurrentPage(pageToRead);
-    // Mặc định mở ở chế độ Bản Gốc PDF 1:1 cho tất cả các sách
     setViewMode("pdf");
     setMainTab("reader");
     try {
@@ -1155,6 +1210,7 @@ export const ReaderSection: React.FC = () => {
   // Delete book from library
   const handleDeleteBook = (docId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    deleteBookImagesFromDb(docId);
     setHistoryList((prev) => {
       const next = prev.filter((b) => b.docId !== docId);
       localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(next));
@@ -3140,6 +3196,9 @@ export const ReaderSection: React.FC = () => {
                     const getPageSrc = (pNum: number) => {
                       const pData = currentBook.pages.find((p) => p.pageNumber === pNum);
                       if (pData?.image) return pData.image;
+                      if (pData?.imageUrl) return pData.imageUrl;
+                      const dbKey = `${currentBook.docId}_${pNum}`;
+                      if (loadedDbImages[dbKey]) return loadedDbImages[dbKey];
                       if (currentBook.docId === "doc_dac_nhan_tam_full") return `/books/dac_nhan_tam/page_${pNum}.webp`;
                       return `/books/${currentBook.docId}/page_${pNum}.webp`;
                     };
@@ -3262,6 +3321,9 @@ export const ReaderSection: React.FC = () => {
                     const getPageSrc = (pNum: number) => {
                       const pData = currentBook.pages.find((p) => p.pageNumber === pNum);
                       if (pData?.image) return pData.image;
+                      if (pData?.imageUrl) return pData.imageUrl;
+                      const dbKey = `${currentBook.docId}_${pNum}`;
+                      if (loadedDbImages[dbKey]) return loadedDbImages[dbKey];
                       if (currentBook.docId === "doc_dac_nhan_tam_full") return `/books/dac_nhan_tam/page_${pNum}.webp`;
                       return `/books/${currentBook.docId}/page_${pNum}.webp`;
                     };
