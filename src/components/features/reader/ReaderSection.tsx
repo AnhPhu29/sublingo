@@ -812,6 +812,9 @@ export const ReaderSection: React.FC = () => {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
     setIsTtsPlaying(false);
     setIsTtsLoading(false);
     setReadingPageNum(null);
@@ -846,81 +849,141 @@ export const ReaderSection: React.FC = () => {
     const cachedUrl = audioCacheRef.current.get(cacheKey);
 
     if (!cachedUrl) {
-      // Chưa có cache → hiện loading spinner
       setIsTtsLoading(true);
     }
 
     try {
-      // Fetch hoặc lấy từ cache
+      // 1. Thử fetch từ API
       const audioUrl = cachedUrl || (await fetchPageAudioBlob(targetPageNum));
-      if (!audioUrl) {
-        throw new Error(`Không thể tạo giọng đọc cho trang ${targetPageNum}.`);
-      }
+      if (audioUrl) {
+        setTtsAudioUrl(audioUrl);
 
-      setTtsAudioUrl(audioUrl);
-
-      if (!audioRef.current) {
-        audioRef.current = new Audio();
-      }
-
-      const audio = audioRef.current;
-      audio.src = audioUrl;
-
-      audio.onloadedmetadata = () => {
-        setTtsDuration(audio.duration || 0);
-      };
-
-      audio.ontimeupdate = () => {
-        setTtsCurrentTime(audio.currentTime || 0);
-      };
-
-      audio.onended = () => {
-        setTtsCurrentTime(0);
-
-        // 🚀 Tự động chuyển sang trang tiếp theo & đọc tiếp
-        const currentActiveBook = currentBookRef.current;
-        const total = currentActiveBook?.totalPages || 0;
-        const shouldContinue =
-          autoNextPageRef.current && isAutoPlayingChainRef.current && targetPageNum < total;
-
-        if (shouldContinue) {
-          const nextTarget = targetPageNum + 1;
-          isInternalPageTurnRef.current = true;
-          setCurrentPage(nextTarget);
-          playPageAudio(nextTarget);
-        } else {
-          setIsTtsPlaying(false);
-          isAutoPlayingChainRef.current = false;
-          setReadingPageNum(null);
+        if (!audioRef.current) {
+          audioRef.current = new Audio();
         }
-      };
 
-      audio.onerror = () => {
-        setIsTtsPlaying(false);
+        const audio = audioRef.current;
+        audio.src = audioUrl;
+
+        audio.onloadedmetadata = () => {
+          setTtsDuration(audio.duration || 0);
+        };
+
+        audio.ontimeupdate = () => {
+          setTtsCurrentTime(audio.currentTime || 0);
+        };
+
+        audio.onended = () => {
+          setTtsCurrentTime(0);
+
+          const currentActiveBook = currentBookRef.current;
+          const total = currentActiveBook?.totalPages || 0;
+          const shouldContinue =
+            autoNextPageRef.current && isAutoPlayingChainRef.current && targetPageNum < total;
+
+          if (shouldContinue) {
+            const nextTarget = targetPageNum + 1;
+            isInternalPageTurnRef.current = true;
+            setCurrentPage(nextTarget);
+            playPageAudio(nextTarget);
+          } else {
+            setIsTtsPlaying(false);
+            isAutoPlayingChainRef.current = false;
+            setReadingPageNum(null);
+          }
+        };
+
+        audio.onerror = () => {
+          setIsTtsPlaying(false);
+          setIsTtsLoading(false);
+          isAutoPlayingChainRef.current = false;
+          setTtsError("Lỗi phát âm thanh. Vui lòng thử lại.");
+        };
+
+        await audio.play();
+        setIsTtsPlaying(true);
         setIsTtsLoading(false);
-        isAutoPlayingChainRef.current = false;
-        setTtsError("Lỗi phát âm thanh. Vui lòng thử lại.");
-      };
 
-      await audio.play();
-      setIsTtsPlaying(true);
-
-      // 🔥 Pre-fetch ngầm 3 trang kế tiếp ngay khi bắt đầu phát trang hiện tại
-      prefetchAhead(targetPageNum, 3);
+        prefetchAhead(targetPageNum, 3);
+        return;
+      }
     } catch (err: any) {
-      console.error("TTS Error:", err);
-      setTtsError(err.message || "Đã xảy ra lỗi khi tạo giọng đọc.");
-      setIsTtsPlaying(false);
-      isAutoPlayingChainRef.current = false;
-    } finally {
-      setIsTtsLoading(false);
+      console.warn("TTS API fetch fallback to Web Speech Synthesis:", err);
     }
+
+    // 2. 🔥 Web Speech Synthesis Fallback (Chạy trực tiếp trên trình duyệt 100% không cần server)
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        const textToSpeak = cleanSpacedLettersAndArtifacts(page.text);
+        if (!textToSpeak.trim()) {
+          setIsTtsPlaying(false);
+          setIsTtsLoading(false);
+          return;
+        }
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.lang = "vi-VN";
+        utterance.rate = Number(ttsSpeedRef.current) || 1.0;
+
+        const voices = window.speechSynthesis.getVoices();
+        const viVoice = voices.find((v) => v.lang === "vi-VN" || v.lang.startsWith("vi"));
+        if (viVoice) {
+          utterance.voice = viVoice;
+        }
+
+        utterance.onstart = () => {
+          setIsTtsPlaying(true);
+          setIsTtsLoading(false);
+        };
+
+        utterance.onend = () => {
+          const currentActiveBook = currentBookRef.current;
+          const total = currentActiveBook?.totalPages || 0;
+          const shouldContinue =
+            autoNextPageRef.current && isAutoPlayingChainRef.current && targetPageNum < total;
+
+          if (shouldContinue) {
+            const nextTarget = targetPageNum + 1;
+            isInternalPageTurnRef.current = true;
+            setCurrentPage(nextTarget);
+            playPageAudio(nextTarget);
+          } else {
+            setIsTtsPlaying(false);
+            isAutoPlayingChainRef.current = false;
+            setReadingPageNum(null);
+          }
+        };
+
+        utterance.onerror = (e) => {
+          console.warn("SpeechSynthesis error:", e);
+          setIsTtsPlaying(false);
+          setIsTtsLoading(false);
+          isAutoPlayingChainRef.current = false;
+        };
+
+        window.speechSynthesis.speak(utterance);
+        setIsTtsPlaying(true);
+        setIsTtsLoading(false);
+        return;
+      } catch (synthErr) {
+        console.error("Speech synthesis failed:", synthErr);
+      }
+    }
+
+    setIsTtsPlaying(false);
+    setIsTtsLoading(false);
+    isAutoPlayingChainRef.current = false;
+    setTtsError("Không thể phát âm thanh trên thiết bị này.");
   };
 
   const handleTogglePlay = () => {
     if (isTtsPlaying) {
       if (audioRef.current) {
         audioRef.current.pause();
+      }
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
       }
       setIsTtsPlaying(false);
     } else {
