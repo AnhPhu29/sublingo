@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model SubtitleJob {
+  id              String   @id @default(cuid())
+  type            String   // "translate" | "ocr_image" | "ocr_video" | "stt" | "dub" | "burn_in"
+  status          String   // "queued" | "processing" | "done" | "error"
+  inputFile       String?  // đường dẫn file gốc
+  outputFile      String?  // đường dẫn file kết quả
+  meta            String   // JSON: targetLangs, glossary, voice, cropRegion, removeWatermark, autoTranslate, translateModel, translateMode, translateStyle, v.v.
+  progressLog     String?  // JSON array các bước đã hoàn thành, hiển thị tiến trình chi tiết
+  progressPercent Int      @default(0)  // 0-100 cho burn-in realtime progress
+  errorMessage    String?
+  costUsd         Float    @default(0)
+  costBreakdown   String?  // JSON: chi tiết chi phí theo từng bước (OCR, watermark, dịch...)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Glossary {
+  id        String   @id @default(cuid())
+  term      String
+  translation String
+  createdAt DateTime @default(now())
+}
+
+model CostLog {
+  id        String   @id @default(cuid())
+  jobId     String
+  provider  String   // "anthropic" | "openai-whisper" | "elevenlabs" | "openai-tts" | "anthropic-watermark" | "anthropic-condense"
+  amountUsd Float
+  costType  String   @default("actual") // "actual" (tính từ token thật) | "estimated" (ước tính theo ký tự/thời lượng)
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+}
+
+model CustomVoice {
+  id           String   @id @default(cuid())
+  name         String
+  refAudioPath String
+  refText      String
+  createdAt    DateTime @default(now())
+}
+
