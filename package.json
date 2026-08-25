@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
-    "dev:turbo": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev --turbo",
-    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
+    "postinstall": "prisma generate",
+    "dev": "next dev",
+    "dev:turbo": "next dev --turbo",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "dev:all": "concurrently \"npm run dev\" \"cd ../backend && .venv\\\\Scripts\\\\uvicorn app.main:app --reload --port 8000\""
