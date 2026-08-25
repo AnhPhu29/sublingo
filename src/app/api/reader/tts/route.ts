@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import crypto from 'crypto';
 
 export const maxDuration = 120;
@@ -30,7 +31,6 @@ function cleanSpacedLettersAndArtifacts(rawText: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
 
   // 2. Xử lý các dòng có chữ bị giãn cách nhiều khoảng trắng
-  // Ví dụ: "Đ Ắ C  N H Â N  T Â M" -> "ĐẮC NHÂN TÂM"
   text = text.replace(/([^\n]+)/g, (line) => {
     if (/\b\p{L}\s+\p{L}/u.test(line)) {
       const segments = line.split(/\s{2,}/);
@@ -46,14 +46,14 @@ function cleanSpacedLettersAndArtifacts(rawText: string): string {
     return line;
   });
 
-  // 3. Xử lý các cụm 3 chữ cái đơn lẻ liền kề (ví dụ: "Đ Ắ C N H Â N T Â M" cách đơn)
+  // 3. Xử lý các cụm 3 chữ cái đơn lẻ liền kề
   text = text.replace(/(?:(?<=\s|^)\p{L}(?:\s+\p{L}){2,}(?=\s|$))/gu, (match) => {
     return match.replace(/\s+/g, '');
   });
 
   const lines = text.split('\n').map((l) => l.trim());
 
-  // 4. Lọc bỏ các dòng Running Footer ở cuối trang (như DALE CARNEGIE, HOW TO WIN FRIENDS..., số trang)
+  // 4. Lọc bỏ các dòng Running Footer ở cuối trang
   while (lines.length > 0) {
     const last = lines[lines.length - 1];
     if (!last) {
@@ -97,6 +97,36 @@ function cleanSpacedLettersAndArtifacts(rawText: string): string {
     .trim();
 }
 
+// Fallback tạo giọng đọc trực tiếp trên môi trường Serverless (Vercel)
+async function synthesizeOnlineTts(text: string): Promise<Buffer> {
+  const chunks = text.match(/[\s\S]{1,160}(?:[.,;!?\s]|$)/g) || [text];
+  const buffers: Buffer[] = [];
+
+  for (const chunk of chunks) {
+    const trimmed = chunk.trim();
+    if (!trimmed) continue;
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(trimmed)}&tl=vi&client=tw-ob`;
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      });
+      if (res.ok) {
+        buffers.push(Buffer.from(await res.arrayBuffer()));
+      }
+    } catch (fetchErr) {
+      console.warn('TTS chunk fetch error:', fetchErr);
+    }
+  }
+
+  if (buffers.length === 0) {
+    throw new Error('Không thể tạo âm thanh cho trang này');
+  }
+
+  return Buffer.concat(buffers);
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -109,13 +139,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Tiền xử lý văn bản chuyên sâu (ghép từ giãn cách & lọc số trang rác)
+    // Tiền xử lý văn bản chuyên sâu
     text = cleanSpacedLettersAndArtifacts(text);
 
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'reader_tts');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    const uploadsDir = path.join(os.tmpdir(), 'reader_tts');
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+    } catch {}
 
     let refAudioPath: string | undefined = undefined;
     let refText: string | undefined = undefined;
@@ -139,7 +171,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Tra cứu cache trên đĩa (trả về ngay sau 0.05s nếu đã từng nạp trang này)
     const ext = isEdgeVoice ? 'mp3' : 'wav';
     const contentType = isEdgeVoice ? 'audio/mpeg' : 'audio/wav';
 
@@ -151,65 +182,79 @@ export async function POST(request: Request) {
     const cacheFilePath = path.join(uploadsDir, `tts_${cacheKey}.${ext}`);
     const timingsFilePath = path.join(uploadsDir, `tts_${cacheKey}.json`);
 
-    if (fs.existsSync(cacheFilePath)) {
-      const cachedBuffer = fs.readFileSync(cacheFilePath);
-      let timingsHeader = '';
-      if (fs.existsSync(timingsFilePath)) {
-        try {
-          timingsHeader = fs.readFileSync(timingsFilePath, 'utf-8');
-        } catch {}
+    try {
+      if (fs.existsSync(cacheFilePath)) {
+        const cachedBuffer = fs.readFileSync(cacheFilePath);
+        let timingsHeader = '';
+        if (fs.existsSync(timingsFilePath)) {
+          try {
+            timingsHeader = fs.readFileSync(timingsFilePath, 'utf-8');
+          } catch {}
+        }
+
+        return new NextResponse(new Uint8Array(cachedBuffer), {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Access-Control-Expose-Headers': 'X-Timings',
+            'X-Timings': timingsHeader,
+          },
+        });
       }
+    } catch {}
 
-      return new NextResponse(new Uint8Array(cachedBuffer), {
-        status: 200,
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000, immutable',
-          'Access-Control-Expose-Headers': 'X-Timings',
-          'X-Timings': timingsHeader,
-        },
+    let audioBuffer: Buffer | null = null;
+    let pythonTimings = '';
+
+    // 1. Thử gọi Python Backend TTS nếu có
+    try {
+      const pythonServiceUrl = process.env.PYTHON_AI_SERVICE_URL || 'http://127.0.0.1:8000';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      const pythonRes = await fetch(`${pythonServiceUrl}/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: text.trim(),
+          voiceId: isEdgeVoice
+            ? (voiceId.includes('nam') || voiceId.includes('male') ? 'vi-VN-NamMinhNeural' : 'vi-VN-HoaiMyNeural')
+            : backendVoiceId,
+          speed: Number(speed) || 1.0,
+          ref_audio: refAudioPath,
+          ref_text: refText,
+          denoise: false,
+        }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
+      if (pythonRes.ok) {
+        pythonTimings = pythonRes.headers.get('x-timings') || '';
+        audioBuffer = Buffer.from(await pythonRes.arrayBuffer());
+      }
+    } catch (pythonErr) {
+      console.log('Python TTS unavailable, using online serverless TTS...');
     }
 
-    // Gọi trực tiếp Python TTS AI Service (Edge Neural / VieNeu Voice Clone)
-    const pythonServiceUrl = process.env.PYTHON_AI_SERVICE_URL || 'http://127.0.0.1:8000';
-    const pythonRes = await fetch(`${pythonServiceUrl}/tts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: text.trim(),
-        voiceId: isEdgeVoice
-          ? (voiceId.includes('nam') || voiceId.includes('male') ? 'vi-VN-NamMinhNeural' : 'vi-VN-HoaiMyNeural')
-          : backendVoiceId,
-        speed: Number(speed) || 1.0,
-        ref_audio: refAudioPath,
-        ref_text: refText,
-        denoise: false,
-      }),
-    });
-
-    if (!pythonRes.ok) {
-      const errData = await pythonRes.json().catch(() => ({}));
-      throw new Error(errData.detail || `Lỗi từ Python TTS Service (HTTP ${pythonRes.status})`);
+    // 2. Nếu Python không khả dụng (môi trường Vercel Cloud), tự động chuyển sang Online Cloud TTS
+    if (!audioBuffer || audioBuffer.length === 0) {
+      audioBuffer = await synthesizeOnlineTts(text);
     }
 
-    const pythonTimings = pythonRes.headers.get('x-timings') || '';
-    const audioBuffer = Buffer.from(await pythonRes.arrayBuffer());
-
-    // Lưu vào cache đĩa (cả audio lẫn metadata thời gian câu/từ)
+    // Lưu vào cache đĩa tạm thời
     try {
       fs.writeFileSync(cacheFilePath, audioBuffer);
       if (pythonTimings) {
         fs.writeFileSync(timingsFilePath, pythonTimings, 'utf-8');
       }
-    } catch (writeErr) {
-      console.warn('Failed to write TTS cache file:', writeErr);
-    }
+    } catch {}
 
     return new NextResponse(new Uint8Array(audioBuffer), {
       status: 200,
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': 'audio/mpeg',
         'Cache-Control': 'public, max-age=31536000, immutable',
         'Access-Control-Expose-Headers': 'X-Timings',
         'X-Timings': pythonTimings,
