@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
 export const maxDuration = 120;
 
@@ -97,8 +98,28 @@ function cleanSpacedLettersAndArtifacts(rawText: string): string {
     .trim();
 }
 
-// Fallback tạo giọng đọc trực tiếp trên môi trường Serverless (Vercel)
-async function synthesizeOnlineTts(text: string): Promise<Buffer> {
+// Tạo giọng đọc chuẩn Microsoft Edge Neural (Hoài My / Nam Minh) trực tiếp trên Node.js / Vercel
+async function synthesizeEdgeNeuralTts(
+  text: string,
+  voiceName: string = 'vi-VN-HoaiMyNeural',
+  speed: number = 1.0
+): Promise<Buffer> {
+  const tts = new MsEdgeTTS();
+  await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+  const ratePercent = Math.round((speed - 1.0) * 100);
+  const rateStr = ratePercent >= 0 ? `+${ratePercent}%` : `${ratePercent}%`;
+
+  const { audioStream } = tts.toStream(text, { rate: rateStr });
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    audioStream.on('data', (c: Buffer) => chunks.push(c));
+    audioStream.on('end', () => resolve(Buffer.concat(chunks)));
+    audioStream.on('error', (err: any) => reject(err));
+  });
+}
+
+// Fallback tạo giọng đọc trực tiếp trên môi trường Serverless (Google TTS)
+async function synthesizeOnlineGoogleTts(text: string): Promise<Buffer> {
   const chunks = text.match(/[\s\S]{1,160}(?:[.,;!?\s]|$)/g) || [text];
   const buffers: Buffer[] = [];
 
@@ -207,11 +228,11 @@ export async function POST(request: Request) {
     let audioBuffer: Buffer | null = null;
     let pythonTimings = '';
 
-    // 1. Thử gọi Python Backend TTS nếu có
+    // 1. Thử gọi Python Backend TTS nếu có (khi chạy local)
     try {
       const pythonServiceUrl = process.env.PYTHON_AI_SERVICE_URL || 'http://127.0.0.1:8000';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const pythonRes = await fetch(`${pythonServiceUrl}/tts`, {
         method: 'POST',
@@ -235,12 +256,22 @@ export async function POST(request: Request) {
         audioBuffer = Buffer.from(await pythonRes.arrayBuffer());
       }
     } catch (pythonErr) {
-      console.log('Python TTS unavailable, using online serverless TTS...');
+      // Python backend không chạy (môi trường Vercel)
     }
 
-    // 2. Nếu Python không khả dụng (môi trường Vercel Cloud), tự động chuyển sang Online Cloud TTS
+    // 2. 🔥 TẠO GIỌNG ĐỌC MICROSOFT EDGE NEURAL TRỰC TIẾP (Chuẩn Hoài My / Nam Minh trên Vercel)
     if (!audioBuffer || audioBuffer.length === 0) {
-      audioBuffer = await synthesizeOnlineTts(text);
+      const edgeVoiceName =
+        voiceId.includes('nam') || voiceId.includes('male')
+          ? 'vi-VN-NamMinhNeural'
+          : 'vi-VN-HoaiMyNeural';
+
+      try {
+        audioBuffer = await synthesizeEdgeNeuralTts(text, edgeVoiceName, Number(speed) || 1.0);
+      } catch (edgeErr) {
+        console.warn('Edge Neural TTS error, fallback to Google TTS:', edgeErr);
+        audioBuffer = await synthesizeOnlineGoogleTts(text);
+      }
     }
 
     // Lưu vào cache đĩa tạm thời
