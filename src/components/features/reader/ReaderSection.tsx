@@ -2713,8 +2713,11 @@ export const ReaderSection: React.FC = () => {
                   }}
                   title="Chọn giọng đọc audio"
                 >
-                  <option value="edge_hoaimy">⚡ Hoài My (Nữ Bắc - Siêu Tốc AI Chuẩn) ★</option>
-                  <option value="edge_namminh">⚡ Nam Minh (Nam Bắc - Siêu Tốc AI Chuẩn)</option>
+                  <option value="ngoc_huyen">🌟 Ngọc Huyền Pro (Nữ Bắc - Diễn cảm Studio) ★</option>
+                  <option value="edge_hoaimy">⚡ Hoài My (Nữ Bắc - Siêu Tốc AI Chuẩn)</option>
+                  <option value="edge_namminh">⚡ Nam Minh (Nam Bắc - Trầm ấm AI Chuẩn)</option>
+                  <option value="mai_anh">✨ Mai Anh (Nữ Bắc - Tự nhiên)</option>
+                  <option value="manh_dung">✨ Mạnh Dũng (Nam Bắc - Mạnh mẽ)</option>
                   {customVoices.map((cv) => (
                     <option key={cv.id} value={cv.id}>
                       ✨ {cv.name} (Giọng Nhân Bản AI)

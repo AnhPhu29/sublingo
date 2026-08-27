@@ -187,9 +187,10 @@ export async function processTtsJob(jobId: string) {
     const uploadFilesSet = new Set(fs.readdirSync(uploadsDir));
 
     const SYSTEM_VOICE_IDS = [
+      "ngoc_huyen", "hoai_my", "nam_minh", "mai_anh", "manh_dung", "huong_giang", "lan_trinh", "minh_hoang",
       "Mai Anh", "Phạm Tuyên", "Minh Đức", "Thùy Dung", "Thái Sơn", "Xuân Vĩnh",
       "Thanh Bình", "Trúc Ly", "Ngọc Linh", "Đoan Trang", "Thục Đoan", "Minh Triết",
-      "Quang Sơn", "Ngọc Trân", "phuong", "dung", "tuyen", "hoang"
+      "Quang Sơn", "Ngọc Trân", "phuong", "dung", "tuyen", "hoang", "female", "male"
     ];
 
     const durationMap = new Map<string, number>();

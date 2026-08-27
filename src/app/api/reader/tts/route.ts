@@ -173,8 +173,7 @@ export async function POST(request: Request) {
     let refAudioPath: string | undefined = undefined;
     let refText: string | undefined = undefined;
     let backendVoiceId = voiceId;
-
-    const isEdgeVoice = ['edge_hoaimy', 'edge_namminh', 'edge_female', 'edge_male', 'hoaimy', 'namminh'].includes(voiceId);
+    const isEdgeVoice = ['ngoc_huyen', 'edge_hoaimy', 'edge_namminh', 'edge_female', 'edge_male', 'hoaimy', 'namminh', 'mai_anh', 'manh_dung'].includes(voiceId);
 
     // Nếu là Custom Voice
     if (!isEdgeVoice && voiceId !== 'female' && voiceId !== 'male') {
