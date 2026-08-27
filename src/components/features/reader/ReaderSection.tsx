@@ -311,6 +311,7 @@ export const ReaderSection: React.FC = () => {
   const isAutoPlayingChainRef = useRef<boolean>(false);
   const isInternalPageTurnRef = useRef<boolean>(false);
   const currentBookRef = useRef<BookDocument | null>(null);
+  const currentPageRef = useRef<number>(1);
   const ttsVoiceIdRef = useRef<string>("edge_hoaimy");
   const ttsSpeedRef = useRef<number>(1.0);
 
@@ -366,6 +367,10 @@ export const ReaderSection: React.FC = () => {
   }, [currentBook]);
 
   useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
     ttsVoiceIdRef.current = ttsVoiceId;
   }, [ttsVoiceId]);
 
@@ -373,7 +378,7 @@ export const ReaderSection: React.FC = () => {
     ttsSpeedRef.current = ttsSpeed;
   }, [ttsSpeed]);
 
-  // 1. Load preferences, history, and custom voices on mount
+  // 1. Load preferences, history, and custom voices on mount with Multi-Tier Progress Recovery
   useEffect(() => {
     try {
       const savedPrefs = localStorage.getItem(STORAGE_KEY_PREFS);
@@ -391,13 +396,24 @@ export const ReaderSection: React.FC = () => {
       }
 
       const savedCurrent = localStorage.getItem(STORAGE_KEY_CURRENT);
+      let initialBookLoaded: BookDocument | null = null;
+
       if (savedCurrent) {
         try {
           const book: BookDocument = JSON.parse(savedCurrent);
-          setCurrentBook(book);
-          currentBookRef.current = book;
-          setCurrentPage(book.lastPageRead || 1);
-          setMainTab("reader");
+          if (book && book.docId && book.pages && book.pages.length > 0) {
+            initialBookLoaded = book;
+            const customBookPage = localStorage.getItem(`sublingo_book_progress_${book.docId}`);
+            const globalLastPage = localStorage.getItem("sublingo_last_active_page");
+            const targetPage = (customBookPage ? parseInt(customBookPage) : 0) || (globalLastPage ? parseInt(globalLastPage) : 0) || book.lastPageRead || 1;
+            
+            const cleanPage = Math.max(1, Math.min(book.totalPages || book.pages.length, targetPage));
+            setCurrentBook(book);
+            currentBookRef.current = book;
+            setCurrentPage(cleanPage);
+            currentPageRef.current = cleanPage;
+            setMainTab("reader");
+          }
         } catch {}
       } else if (books.length > 0) {
         setMainTab("library");
@@ -405,32 +421,51 @@ export const ReaderSection: React.FC = () => {
         setMainTab("reader");
       }
 
-      // Tự động đồng bộ cuốn sách Đắc Nhân Tâm (Bản Gốc 321 Trang) vào Tủ Sách
+      // Tự động đồng bộ cuốn sách Đắc Nhân Tâm vào Tủ Sách mà KHÔNG ghi đè tiến trình đọc của người dùng
       fetch("/dac_nhan_tam_book.json")
         .then((r) => (r.ok ? r.json() : null))
         .then((sampleBook: BookDocument | null) => {
           if (sampleBook) {
+            const customSampleProgress = localStorage.getItem(`sublingo_book_progress_${sampleBook.docId}`);
+            const sampleSavedPage = customSampleProgress ? parseInt(customSampleProgress) : 0;
+
             setHistoryList((prev) => {
+              const existingInHistory = prev.find(
+                (b) =>
+                  b.docId === sampleBook.docId ||
+                  b.fileName.toLowerCase().trim() === sampleBook.fileName.toLowerCase().trim()
+              );
+              const preservedPage = sampleSavedPage || existingInHistory?.lastPageRead || 1;
+              const mergedSample: BookDocument = {
+                ...sampleBook,
+                lastPageRead: preservedPage,
+              };
+
               const withoutSample = prev.filter(
                 (b) =>
                   b.docId !== sampleBook.docId &&
                   b.fileName.toLowerCase().trim() !== sampleBook.fileName.toLowerCase().trim()
               );
-              const updated = deduplicateBooks([sampleBook, ...withoutSample]).slice(0, 30);
+              const updated = deduplicateBooks([mergedSample, ...withoutSample]).slice(0, 30);
               try {
                 localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
               } catch {}
               return updated;
             });
 
-            // Nếu chưa có sách hoặc đang đọc cuốn cũ, mở Đắc Nhân Tâm tại trang 21
-            if (!savedCurrent || (savedCurrent && !JSON.parse(savedCurrent).pages?.length)) {
-              setCurrentBook(sampleBook);
-              currentBookRef.current = sampleBook;
-              setCurrentPage(21);
+            // Chỉ mở mẫu nếu hiện tại hoàn toàn chưa có sách nào
+            if (!initialBookLoaded) {
+              const pageToOpen = sampleSavedPage || 1;
+              const cleanSample = { ...sampleBook, lastPageRead: pageToOpen };
+              setCurrentBook(cleanSample);
+              currentBookRef.current = cleanSample;
+              setCurrentPage(pageToOpen);
+              currentPageRef.current = pageToOpen;
               setMainTab("reader");
               try {
-                localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(sampleBook));
+                localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(cleanSample));
+                localStorage.setItem(`sublingo_book_progress_${sampleBook.docId}`, String(pageToOpen));
+                localStorage.setItem("sublingo_last_active_page", String(pageToOpen));
               } catch {}
             }
           }
@@ -452,6 +487,25 @@ export const ReaderSection: React.FC = () => {
 
     // Nạp sẵn mô hình AI VieNeu-TTS vào RAM (Warm-up)
     fetch("/api/voices").catch(() => {});
+
+    // Hook bắt sự kiện đóng tab/rời trang để luôn lưu lại trang đang nghe/đọc
+    const handleBeforeUnload = () => {
+      const b = currentBookRef.current;
+      const p = currentPageRef.current;
+      if (b && b.docId && p) {
+        try {
+          localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify({ ...b, lastPageRead: p, savedAt: Date.now() }));
+          localStorage.setItem(`sublingo_book_progress_${b.docId}`, String(p));
+          localStorage.setItem("sublingo_last_active_book_id", b.docId);
+          localStorage.setItem("sublingo_last_active_page", String(p));
+        } catch {}
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      handleBeforeUnload();
+    };
   }, []);
 
   // Save prefs on change
@@ -463,9 +517,10 @@ export const ReaderSection: React.FC = () => {
     }
   }, [prefs]);
 
-  // Save reading progress on page change
+  // Save reading progress on page change (Instant Multi-tier storage)
   useEffect(() => {
-    if (!currentBook) return;
+    currentPageRef.current = currentPage;
+    if (!currentBook || !currentBook.docId) return;
 
     const updatedBook: BookDocument = {
       ...currentBook,
@@ -475,6 +530,9 @@ export const ReaderSection: React.FC = () => {
 
     try {
       localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(updatedBook));
+      localStorage.setItem(`sublingo_book_progress_${currentBook.docId}`, String(currentPage));
+      localStorage.setItem("sublingo_last_active_book_id", currentBook.docId);
+      localStorage.setItem("sublingo_last_active_page", String(currentPage));
 
       // Update in history list
       setHistoryList((prev) => {
@@ -1228,17 +1286,26 @@ export const ReaderSection: React.FC = () => {
     }
   };
 
-  // Switch book selection
+  // Switch book selection with multi-tier progress recovery
   const handleSelectBook = (book: BookDocument) => {
     stopTts();
-    setCurrentBook(book);
-    currentBookRef.current = book;
-    const pageToRead = book.lastPageRead || 1;
-    setCurrentPage(pageToRead);
+    const customProgress = localStorage.getItem(`sublingo_book_progress_${book.docId}`);
+    const targetPage = (customProgress ? parseInt(customProgress) : 0) || book.lastPageRead || 1;
+    const cleanPage = Math.max(1, Math.min(book.totalPages || (book.pages ? book.pages.length : 1), targetPage));
+    const updatedBook = { ...book, lastPageRead: cleanPage };
+
+    setCurrentBook(updatedBook);
+    currentBookRef.current = updatedBook;
+    setCurrentPage(cleanPage);
+    currentPageRef.current = cleanPage;
     setViewMode("pdf");
     setMainTab("reader");
+
     try {
-      localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(book));
+      localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(updatedBook));
+      localStorage.setItem(`sublingo_book_progress_${book.docId}`, String(cleanPage));
+      localStorage.setItem("sublingo_last_active_book_id", book.docId);
+      localStorage.setItem("sublingo_last_active_page", String(cleanPage));
     } catch {}
   };
 
