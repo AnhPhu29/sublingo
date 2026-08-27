@@ -50,7 +50,7 @@ export const TtsSection: React.FC<TtsSectionProps> = ({
   // Input raw text
   const [rawText, setRawText] = useState("");
   const [segments, setSegments] = useState<TtsSegmentItem[]>([]);
-  const [globalVoiceId, setGlobalVoiceId] = useState("Mai Anh");
+  const [globalVoiceId, setGlobalVoiceId] = useState("ngoc_huyen_cloned");
   const [translateLang, setTranslateLang] = useState("none");
   const [isTranslating, setIsTranslating] = useState(false);
 
@@ -791,14 +791,11 @@ export const TtsSection: React.FC<TtsSectionProps> = ({
               {vbeeVoicesLoading ? (
                 <option value={globalVoiceId}>⏳ Đang tải danh sách giọng...</option>
               ) : vbeeVoices.length === 0 ? (
-                <>
-                  <option value="female">🎙 Giọng Nữ (Chuẩn)</option>
-                  <option value="male">🎙 Giọng Nam (Chuẩn)</option>
-                </>
+                <option value="ngoc_huyen_cloned">🎙 🌟 [Giọng tùy chỉnh] Ngọc Huyền (Nhân bản)</option>
               ) : (
                 vbeeVoices.map((v) => (
                   <option key={v.code} value={v.code}>
-                    🎙 {v.name} {v.gender === "female" ? "(Nữ)" : v.gender === "male" ? "(Nam)" : v.gender === "cloned" ? "(Nhân bản)" : ""}
+                    🎙 {v.name}
                   </option>
                 ))
               )}
@@ -943,7 +940,7 @@ export const TtsSection: React.FC<TtsSectionProps> = ({
                 <option value="default">Giọng chung (Mặc định)</option>
                 {vbeeVoices.map((v) => (
                   <option key={v.code} value={v.code}>
-                    {v.name} ({v.gender === "female" ? "Nữ" : "Nam"})
+                    {v.name}
                   </option>
                 ))}
               </select>
@@ -1330,7 +1327,7 @@ export const TtsSection: React.FC<TtsSectionProps> = ({
                               </option>
                               {vbeeVoices.map((v) => (
                                 <option key={v.code} value={v.code}>
-                                  {v.name} ({v.gender === "female" ? "Nữ" : v.gender === "male" ? "Nam" : "Nhân bản"})
+                                  {v.name}
                                 </option>
                               ))}
                             </select>

@@ -55,7 +55,7 @@ export const StudioProvider: React.FC<{ children: React.ReactNode; initialTab?: 
   const [subtitleBlocks, setSubtitleBlocks] = useState<SubtitleBlock[]>([]);
   const [activeBlockId, setActiveBlockId] = useState<number | null>(null);
   const [selectedLangs, setSelectedLangs] = useState<string[]>(["vi"]);
-  const [selectedVoiceId, setSelectedVoiceId] = useState<string>("Mai Anh");
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>("ngoc_huyen_cloned");
 
   // Parse SRT to blocks whenever originalSrt or translatedSrt updates
   useEffect(() => {

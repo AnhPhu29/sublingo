@@ -26,22 +26,15 @@ export function useCustomVoices({
   const fetchVoices = useCallback(async () => {
     setVbeeVoicesLoading(true);
     try {
-      const res = await fetch('/api/voices');
-      const ctVal = res.headers.get('content-type') || '';
-      const data = (res.ok && ctVal.includes('application/json')) ? await res.json() : null;
-      
       const customRes = await fetch('/api/custom-voices');
       const customCtVal = customRes.headers.get('content-type') || '';
       const customData = (customRes.ok && customCtVal.includes('application/json')) ? await customRes.json() : null;
       
       let allVoices: any[] = [];
-      if (data && data.success && Array.isArray(data.voices)) {
-        allVoices = [...data.voices];
-      }
       
-      if (customData && customData.success && Array.isArray(customData.voices)) {
+      if (customData && customData.success && Array.isArray(customData.voices) && customData.voices.length > 0) {
         setCustomVoices(customData.voices);
-        const formattedCustom = customData.voices.map((cv: any) => ({
+        allVoices = customData.voices.map((cv: any) => ({
           code: cv.id,
           name: `🌟 [Giọng tùy chỉnh] ${cv.name}`,
           gender: 'cloned',
@@ -49,7 +42,17 @@ export function useCustomVoices({
           isCustom: true,
           demoUrl: `/api/custom-voices/audio/${cv.id}`
         }));
-        allVoices = [...allVoices, ...formattedCustom];
+      } else {
+        // Fallback duy nhất: Giọng nhân bản Ngọc Huyền
+        allVoices = [
+          {
+            code: 'ngoc_huyen_cloned',
+            name: '🌟 [Giọng tùy chỉnh] Ngọc Huyền (Nhân bản)',
+            gender: 'cloned',
+            creditFactor: 1.0,
+            isCustom: true,
+          }
+        ];
       }
       
       setVbeeVoices(allVoices);
@@ -60,6 +63,15 @@ export function useCustomVoices({
       }
     } catch (e) {
       console.error('Failed to fetch voices:', e);
+      setVbeeVoices([
+        {
+          code: 'ngoc_huyen_cloned',
+          name: '🌟 [Giọng tùy chỉnh] Ngọc Huyền (Nhân bản)',
+          gender: 'cloned',
+          creditFactor: 1.0,
+          isCustom: true,
+        }
+      ]);
     } finally {
       setVbeeVoicesLoading(false);
     }

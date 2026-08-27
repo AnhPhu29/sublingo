@@ -90,7 +90,7 @@ export const UnifiedStudioCanvas: React.FC = () => {
   const [sttLang, setSttLang] = useState<string>("auto");
   const [transEngine, setTransEngine] = useState<"gemini" | "local" | "google_free">("gemini");
   const [transTargetLang, setTransTargetLang] = useState<string>("vi");
-  const [dubVoiceId, setDubVoiceId] = useState<string>("Mai Anh");
+  const [dubVoiceId, setDubVoiceId] = useState<string>("ngoc_huyen_cloned");
   const [dubSpeed, setDubSpeed] = useState<number>(1.0);
 
   // Loading / Progress State
