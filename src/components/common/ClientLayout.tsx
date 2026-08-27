@@ -27,6 +27,7 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const {
     uiLang,
@@ -37,6 +38,16 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
     setIsGeminiKeyModalOpen,
     showToast,
   } = useSubLingo();
+
+  // Check mobile screen size on mount & resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Prefetch all routes in background for 0ms transitions
   useEffect(() => {
@@ -303,11 +314,14 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
         className="sublingo-layout-content"
         style={{
           flex: 1,
-          marginLeft: sidebarWidth,
+          marginLeft: isMobile ? "0px" : sidebarWidth,
+          width: isMobile ? "100%" : `calc(100% - ${sidebarWidth})`,
+          maxWidth: "100vw",
           transition: "margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
           display: "flex",
           flexDirection: "column",
           minWidth: 0,
+          overflowX: "hidden",
         }}
       >
         {/* Top Header */}

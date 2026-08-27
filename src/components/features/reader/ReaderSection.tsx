@@ -329,6 +329,16 @@ export const ReaderSection: React.FC = () => {
   const [is3dFlipping, setIs3dFlipping] = useState<"next" | "prev" | null>(null);
   const [failedPageImages, setFailedPageImages] = useState<Record<string, boolean>>({});
   const [loadedDbImages, setLoadedDbImages] = useState<Record<string, string>>({});
+  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     setFailedPageImages({});
@@ -534,7 +544,7 @@ export const ReaderSection: React.FC = () => {
   };
 
   const goToPrevPage = () => {
-    const step = pageSpreadMode === "double" ? 2 : 1;
+    const step = (!isMobileScreen && pageSpreadMode === "double") ? 2 : 1;
     const prevPage = Math.max(1, currentPage - step);
     if (prevPage === currentPage) return;
     if (isTtsPlaying) {
@@ -549,7 +559,7 @@ export const ReaderSection: React.FC = () => {
 
   const goToNextPage = () => {
     if (!currentBook) return;
-    const step = pageSpreadMode === "double" ? 2 : 1;
+    const step = (!isMobileScreen && pageSpreadMode === "double") ? 2 : 1;
     const nextPage = Math.min(currentBook.totalPages, currentPage + step);
     if (nextPage === currentPage) return;
     if (isTtsPlaying) {
@@ -1391,6 +1401,7 @@ export const ReaderSection: React.FC = () => {
             padding: "4px",
             borderRadius: "var(--radius-xs)",
             flexWrap: "wrap",
+            width: isMobileScreen ? "100%" : "auto",
           }}
         >
           {currentBook && (
@@ -1398,22 +1409,30 @@ export const ReaderSection: React.FC = () => {
               type="button"
               onClick={() => setMainTab("reader")}
               style={{
-                padding: "0.45rem 0.9rem",
+                padding: "0.45rem 0.65rem",
                 borderRadius: "var(--radius-xs)",
                 border: "none",
                 background: mainTab === "reader" ? "var(--accent-gold)" : "transparent",
                 color: mainTab === "reader" ? "#FFFFFF" : "var(--text)",
                 fontWeight: 700,
-                fontSize: "0.82rem",
+                fontSize: "0.8rem",
                 display: "flex",
                 alignItems: "center",
-                gap: "0.4rem",
+                justifyContent: "center",
+                gap: "0.35rem",
                 cursor: "pointer",
                 transition: "all 0.15s ease",
+                flex: isMobileScreen ? "1 1 auto" : "initial",
+                minWidth: "90px",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+                textOverflow: "ellipsis",
               }}
             >
-              <BookOpen size={15} />
-              Đang Đọc: {currentBook.fileName.replace(/\.pdf$/i, "").slice(0, 18)}...
+              <BookOpen size={14} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                Đang đọc: {currentBook.fileName.replace(/\.pdf$/i, "").slice(0, 14)}...
+              </span>
             </button>
           )}
 
@@ -1421,44 +1440,50 @@ export const ReaderSection: React.FC = () => {
             type="button"
             onClick={() => setMainTab("library")}
             style={{
-              padding: "0.45rem 0.9rem",
+              padding: "0.45rem 0.65rem",
               borderRadius: "var(--radius-xs)",
               border: "none",
               background: mainTab === "library" ? "var(--accent-gold)" : "transparent",
               color: mainTab === "library" ? "#FFFFFF" : "var(--text)",
               fontWeight: 700,
-              fontSize: "0.82rem",
+              fontSize: "0.8rem",
               display: "flex",
               alignItems: "center",
-              gap: "0.4rem",
+              justifyContent: "center",
+              gap: "0.35rem",
               cursor: "pointer",
               transition: "all 0.15s ease",
+              flex: isMobileScreen ? "1 1 auto" : "initial",
+              whiteSpace: "nowrap",
             }}
           >
-            <Library size={15} />
-            Tủ Sách Của Tôi ({historyList.length})
+            <Library size={14} style={{ flexShrink: 0 }} />
+            <span>Tủ Sách ({historyList.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setMainTab("upload")}
             style={{
-              padding: "0.45rem 0.9rem",
+              padding: "0.45rem 0.65rem",
               borderRadius: "var(--radius-xs)",
               border: "none",
               background: mainTab === "upload" ? "var(--accent-gold)" : "transparent",
               color: mainTab === "upload" ? "#FFFFFF" : "var(--text)",
               fontWeight: 700,
-              fontSize: "0.82rem",
+              fontSize: "0.8rem",
               display: "flex",
               alignItems: "center",
-              gap: "0.4rem",
+              justifyContent: "center",
+              gap: "0.35rem",
               cursor: "pointer",
               transition: "all 0.15s ease",
+              flex: isMobileScreen ? "1 1 auto" : "initial",
+              whiteSpace: "nowrap",
             }}
           >
-            <Plus size={15} />
-            Thêm Sách Mới
+            <Plus size={14} style={{ flexShrink: 0 }} />
+            <span>Thêm Sách</span>
           </button>
         </div>
       </div>
@@ -2137,47 +2162,48 @@ export const ReaderSection: React.FC = () => {
       {/* ── 3. GIAO DIỆN ĐỌC SÁCH CHÍNH (READER VIEW) ─────────────────────── */}
       {mainTab === "reader" && currentBook && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {/* Top Reading Controls Toolbar */}
           <div
             className="reader-controls-bar"
             style={{
               background: "var(--card)",
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-sm)",
-              padding: "0.75rem 1.25rem",
+              padding: isMobileScreen ? "0.65rem 0.75rem" : "0.75rem 1.25rem",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               flexWrap: "wrap",
-              gap: "0.75rem",
+              gap: "0.6rem",
               boxShadow: "var(--shadow-card)",
+              width: "100%",
             }}
           >
             {/* Left: Book Title & Sidebar toggle */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", width: isMobileScreen ? "100%" : "auto" }}>
               <button
                 type="button"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 style={{
-                  padding: "0.45rem 0.75rem",
+                  padding: "0.4rem 0.65rem",
                   background: sidebarOpen ? "var(--accent-soft)" : "var(--bg-elevated-2)",
                   color: sidebarOpen ? "var(--accent-gold)" : "var(--text)",
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius-xs)",
-                  fontSize: "0.82rem",
+                  fontSize: "0.8rem",
                   fontWeight: 650,
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.4rem",
+                  gap: "0.35rem",
                   cursor: "pointer",
+                  flexShrink: 0,
                 }}
               >
-                <Layers size={16} />
-                Mục lục ({currentBook.totalPages} tr)
+                <Layers size={15} />
+                <span>Mục lục ({currentBook.totalPages} tr)</span>
               </button>
 
               {/* Quick Book Switcher Dropdown */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flex: isMobileScreen ? "1 1 100%" : "initial", minWidth: 0 }}>
                 <select
                   value={currentBook.docId}
                   onChange={(e) => {
@@ -2185,16 +2211,18 @@ export const ReaderSection: React.FC = () => {
                     if (selected) handleSelectBook(selected);
                   }}
                   style={{
-                    padding: "0.4rem 0.65rem",
+                    padding: "0.4rem 0.5rem",
                     background: "var(--bg-elevated)",
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius-xs)",
                     color: "var(--text)",
-                    fontSize: "0.82rem",
+                    fontSize: "0.8rem",
                     fontWeight: 700,
                     outline: "none",
-                    maxWidth: "200px",
+                    width: isMobileScreen ? "100%" : "auto",
+                    maxWidth: isMobileScreen ? "100%" : "220px",
                     cursor: "pointer",
+                    textOverflow: "ellipsis",
                   }}
                   title="Chuyển nhanh sang cuốn sách khác trong tủ sách"
                 >
@@ -2214,9 +2242,10 @@ export const ReaderSection: React.FC = () => {
                       color: "#b45309",
                       borderRadius: "4px",
                       fontWeight: 700,
+                      flexShrink: 0,
                     }}
                   >
-                    🔍 AI OCR
+                    🔍 OCR
                   </span>
                 ) : (
                   <span
@@ -2227,16 +2256,17 @@ export const ReaderSection: React.FC = () => {
                       color: "#15803d",
                       borderRadius: "4px",
                       fontWeight: 700,
+                      flexShrink: 0,
                     }}
                   >
-                    ⚡ Text Layer
+                    ⚡ Text
                   </span>
                 )}
               </div>
             </div>
 
             {/* Right: Reading Typography & Appearance Controls */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", width: isMobileScreen ? "100%" : "auto" }}>
               {/* Chỉ hiển thị các tùy chỉnh Font/Màu giấy khi ở chế độ Dàn chữ (Reflow) */}
               {viewMode === "reflow" && (
                 <>
@@ -2259,15 +2289,15 @@ export const ReaderSection: React.FC = () => {
                         background: "none",
                         border: "none",
                         color: "var(--text)",
-                        cursor: "pointer",
                         fontSize: "0.8rem",
                         fontWeight: 700,
+                        cursor: "pointer",
                       }}
                       title="Giảm cỡ chữ"
                     >
                       A-
                     </button>
-                    <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "0 4px", color: "var(--text-muted)" }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 650, padding: "0 0.25rem", color: "var(--text)" }}>
                       {prefs.fontSize}px
                     </span>
                     <button
@@ -2278,9 +2308,9 @@ export const ReaderSection: React.FC = () => {
                         background: "none",
                         border: "none",
                         color: "var(--text)",
-                        cursor: "pointer",
-                        fontSize: "0.85rem",
+                        fontSize: "0.8rem",
                         fontWeight: 700,
+                        cursor: "pointer",
                       }}
                       title="Tăng cỡ chữ"
                     >
@@ -2288,105 +2318,56 @@ export const ReaderSection: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Font Family Switcher */}
-                  <select
-                    value={prefs.fontFamily}
-                    onChange={(e) => setPrefs((p) => ({ ...p, fontFamily: e.target.value as any }))}
+                  {/* Theme Switcher (Màu nền giấy sách) */}
+                  <div
                     style={{
-                      padding: "0.35rem 0.6rem",
-                      background: "var(--bg-elevated-2)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-xs)",
-                      color: "var(--text)",
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      outline: "none",
-                    }}
-                  >
-                    <option value="serif">Phông Sách (Serif)</option>
-                    <option value="sans">Phông Hiện Đại (Sans)</option>
-                    <option value="mono">Phông Đơn Cách (Mono)</option>
-                  </select>
-
-                  {/* Text Alignment Toggle (Justify vs Left) */}
-                  <button
-                    type="button"
-                    onClick={() => setPrefs((p) => ({ ...p, textAlign: p.textAlign === "justify" ? "left" : "justify" }))}
-                    style={{
-                      padding: "0.35rem 0.5rem",
-                      background: "var(--bg-elevated-2)",
-                      color: "var(--text)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-xs)",
-                      fontSize: "0.8rem",
-                      cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: "3px",
-                    }}
-                    title={prefs.textAlign === "justify" ? "Đang căn đều 2 bên (Bấm để căn trái)" : "Đang căn trái (Bấm để căn đều 2 bên)"}
-                  >
-                    {prefs.textAlign === "justify" ? <AlignJustify size={14} /> : <AlignLeft size={14} />}
-                  </button>
-
-                  {/* Paragraph Indent Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setPrefs((p) => ({ ...p, paragraphIndent: !p.paragraphIndent }))}
-                    style={{
-                      padding: "0.35rem 0.5rem",
-                      background: prefs.paragraphIndent ? "var(--accent-soft)" : "var(--bg-elevated-2)",
-                      color: prefs.paragraphIndent ? "var(--accent-gold)" : "var(--text)",
-                      border: "1px solid var(--border)",
+                      gap: "0.25rem",
+                      background: "var(--bg-elevated-2)",
+                      padding: "2px 4px",
                       borderRadius: "var(--radius-xs)",
-                      fontSize: "0.8rem",
-                      cursor: "pointer",
+                      border: "1px solid var(--border)",
                     }}
-                    title="Bật/Tắt thụt đầu dòng đoạn văn"
                   >
-                    <Indent size={14} />
-                  </button>
-
-                  {/* Paper Theme Colors */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                     <button
                       type="button"
                       onClick={() => setPrefs((p) => ({ ...p, paperTheme: "sepia" }))}
                       style={{
-                        width: "22px",
-                        height: "22px",
+                        width: "18px",
+                        height: "18px",
                         borderRadius: "50%",
-                        background: "#faf4e8",
-                        border: prefs.paperTheme === "sepia" ? "2.5px solid var(--accent-gold)" : "1px solid #d4a373",
+                        background: "#f4ecd8",
+                        border: prefs.paperTheme === "sepia" ? "2px solid var(--accent-gold)" : "1px solid #d4c5a9",
                         cursor: "pointer",
                       }}
-                      title="Chế độ Giấy vàng Ngà Sepia (Dịu mắt ban đêm)"
+                      title="Màu Giấy Ngả Vàng Cổ Điển"
                     />
                     <button
                       type="button"
                       onClick={() => setPrefs((p) => ({ ...p, paperTheme: "default" }))}
                       style={{
-                        width: "22px",
-                        height: "22px",
+                        width: "18px",
+                        height: "18px",
                         borderRadius: "50%",
                         background: "#ffffff",
-                        border: prefs.paperTheme === "default" ? "2.5px solid var(--accent-gold)" : "1px solid #cbd5e1",
+                        border: prefs.paperTheme === "default" ? "2px solid var(--accent-gold)" : "1px solid #cbd5e1",
                         cursor: "pointer",
                       }}
-                      title="Chế độ Giấy trắng"
+                      title="Màu Giấy Trắng Hiện Đại"
                     />
                     <button
                       type="button"
                       onClick={() => setPrefs((p) => ({ ...p, paperTheme: "dark" }))}
                       style={{
-                        width: "22px",
-                        height: "22px",
+                        width: "18px",
+                        height: "18px",
                         borderRadius: "50%",
-                        background: "#171a23",
-                        border: prefs.paperTheme === "dark" ? "2.5px solid var(--accent-gold)" : "1px solid #475569",
+                        background: "#1e293b",
+                        border: prefs.paperTheme === "dark" ? "2px solid var(--accent-gold)" : "1px solid #475569",
                         cursor: "pointer",
                       }}
-                      title="Chế độ Nền tối (Dark)"
+                      title="Màu Nền Tối Ban Đêm"
                     />
                   </div>
                 </>
@@ -2397,21 +2378,23 @@ export const ReaderSection: React.FC = () => {
                 type="button"
                 onClick={handleCopyPageText}
                 style={{
-                  padding: "0.4rem 0.6rem",
+                  padding: "0.35rem 0.55rem",
                   background: isCopied ? "rgba(34, 197, 94, 0.15)" : "var(--bg-elevated-2)",
                   color: isCopied ? "#15803d" : "var(--text)",
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius-xs)",
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.3rem",
+                  gap: "0.25rem",
+                  flex: isMobileScreen ? "1 1 auto" : "initial",
+                  justifyContent: "center",
                 }}
                 title="Sao chép văn bản trang này"
               >
-                {isCopied ? <Check size={14} /> : <Copy size={14} />}
-                {isCopied ? "Đã chép" : "Sao chép"}
+                {isCopied ? <Check size={13} /> : <Copy size={13} />}
+                <span>{isCopied ? "Đã chép" : "Chép"}</span>
               </button>
 
               {/* Download Text */}
@@ -2419,77 +2402,82 @@ export const ReaderSection: React.FC = () => {
                 type="button"
                 onClick={handleDownloadFullBook}
                 style={{
-                  padding: "0.4rem 0.6rem",
+                  padding: "0.35rem 0.55rem",
                   background: "var(--bg-elevated-2)",
                   color: "var(--text)",
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius-xs)",
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.3rem",
+                  gap: "0.25rem",
+                  flex: isMobileScreen ? "1 1 auto" : "initial",
+                  justifyContent: "center",
                 }}
                 title="Tải toàn bộ văn bản (.txt)"
               >
-                <Download size={14} />
-                Xuất .txt
+                <Download size={13} />
+                <span>Xuất .txt</span>
               </button>
 
-              {/* Spread Mode Toggle: 1 Trang vs 2 Trang */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  background: "var(--bg-elevated-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius-xs)",
-                  padding: "2px",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setPageSpreadMode("single")}
+              {/* Spread Mode Toggle: 1 Trang vs 2 Trang (Chỉ trên máy tính / màn hình rộng) */}
+              {!isMobileScreen && (
+                <div
+                  className="desktop-only"
                   style={{
-                    padding: "0.3rem 0.6rem",
-                    background: pageSpreadMode === "single" ? "var(--accent-gold)" : "transparent",
-                    color: pageSpreadMode === "single" ? "#fff" : "var(--text-muted)",
-                    border: "none",
-                    borderRadius: "3px",
-                    fontSize: "0.78rem",
-                    fontWeight: pageSpreadMode === "single" ? 700 : 500,
-                    cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.3rem",
+                    background: "var(--bg-elevated-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-xs)",
+                    padding: "2px",
                   }}
-                  title="Chế độ xem 1 trang"
                 >
-                  <FileText size={13} />
-                  1 Trang
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPageSpreadMode("double")}
-                  style={{
-                    padding: "0.3rem 0.6rem",
-                    background: pageSpreadMode === "double" ? "var(--accent-gold)" : "transparent",
-                    color: pageSpreadMode === "double" ? "#fff" : "var(--text-muted)",
-                    border: "none",
-                    borderRadius: "3px",
-                    fontSize: "0.78rem",
-                    fontWeight: pageSpreadMode === "double" ? 700 : 500,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.3rem",
-                  }}
-                  title="Chế độ xem 2 trang mở rộng như sách thật"
-                >
-                  <Columns size={13} />
-                  2 Trang
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => setPageSpreadMode("single")}
+                    style={{
+                      padding: "0.3rem 0.6rem",
+                      background: pageSpreadMode === "single" ? "var(--accent-gold)" : "transparent",
+                      color: pageSpreadMode === "single" ? "#fff" : "var(--text-muted)",
+                      border: "none",
+                      borderRadius: "3px",
+                      fontSize: "0.78rem",
+                      fontWeight: pageSpreadMode === "single" ? 700 : 500,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                    }}
+                    title="Chế độ xem 1 trang"
+                  >
+                    <FileText size={13} />
+                    1 Trang
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPageSpreadMode("double")}
+                    style={{
+                      padding: "0.3rem 0.6rem",
+                      background: pageSpreadMode === "double" ? "var(--accent-gold)" : "transparent",
+                      color: pageSpreadMode === "double" ? "#fff" : "var(--text-muted)",
+                      border: "none",
+                      borderRadius: "3px",
+                      fontSize: "0.78rem",
+                      fontWeight: pageSpreadMode === "double" ? 700 : 500,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.3rem",
+                    }}
+                    title="Chế độ xem 2 trang mở rộng như sách thật"
+                  >
+                    <Columns size={13} />
+                    2 Trang
+                  </button>
+                </div>
+              )}
 
               {/* View Mode Toggle: Reflow vs PDF */}
               <div
@@ -2500,13 +2488,14 @@ export const ReaderSection: React.FC = () => {
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius-xs)",
                   padding: "2px",
+                  flex: isMobileScreen ? "1 1 auto" : "initial",
                 }}
               >
                 <button
                   type="button"
                   onClick={() => setViewMode("pdf")}
                   style={{
-                    padding: "0.3rem 0.65rem",
+                    padding: "0.3rem 0.55rem",
                     background: viewMode === "pdf" ? "var(--accent-gold)" : "transparent",
                     color: viewMode === "pdf" ? "#fff" : "var(--text-muted)",
                     border: "none",
@@ -2516,19 +2505,21 @@ export const ReaderSection: React.FC = () => {
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.3rem",
+                    justifyContent: "center",
+                    gap: "0.25rem",
                     transition: "all 0.15s ease",
+                    flex: isMobileScreen ? "1" : "initial",
                   }}
                   title="Chế độ xem bản in gốc PDF 1:1 từng chi tiết"
                 >
                   <FileText size={13} />
-                  Bản gốc PDF
+                  <span>PDF</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode("reflow")}
                   style={{
-                    padding: "0.3rem 0.65rem",
+                    padding: "0.3rem 0.55rem",
                     background: viewMode === "reflow" ? "var(--accent-gold)" : "transparent",
                     color: viewMode === "reflow" ? "#fff" : "var(--text-muted)",
                     border: "none",
@@ -2538,13 +2529,15 @@ export const ReaderSection: React.FC = () => {
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.3rem",
+                    justifyContent: "center",
+                    gap: "0.25rem",
                     transition: "all 0.15s ease",
+                    flex: isMobileScreen ? "1" : "initial",
                   }}
                   title="Chế độ dàn chữ E-book dễ đọc & tô màu từng chữ"
                 >
                   <BookOpen size={13} />
-                  Dàn chữ
+                  <span>Dàn chữ</span>
                 </button>
               </div>
 
@@ -2559,6 +2552,8 @@ export const ReaderSection: React.FC = () => {
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius-xs)",
                     padding: "2px 6px",
+                    flex: isMobileScreen ? "1 1 auto" : "initial",
+                    justifyContent: "center",
                   }}
                 >
                   <button
@@ -2608,22 +2603,23 @@ export const ReaderSection: React.FC = () => {
               background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(2,132,199,0.08))",
               border: "1px solid rgba(37,99,235,0.25)",
               borderRadius: "var(--radius-sm)",
-              padding: "0.85rem 1.25rem",
+              padding: isMobileScreen ? "0.65rem 0.75rem" : "0.85rem 1.25rem",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "1rem",
+              flexDirection: isMobileScreen ? "column" : "row",
+              gap: "0.75rem",
+              width: "100%",
             }}
           >
             {/* Left: Play/Pause Button & Voice Selector */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", width: isMobileScreen ? "100%" : "auto" }}>
               <button
                 type="button"
                 onClick={handleTogglePlay}
                 disabled={isTtsLoading || activeParagraphs.length === 0}
                 style={{
-                  padding: "0.55rem 1.25rem",
+                  padding: "0.55rem 1.1rem",
                   background: isTtsPlaying ? "#ef4444" : "var(--accent-gold)",
                   color: "#FFFFFF",
                   border: "none",
@@ -2632,11 +2628,13 @@ export const ReaderSection: React.FC = () => {
                   fontWeight: 700,
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "center",
                   gap: "0.45rem",
                   cursor: isTtsLoading || activeParagraphs.length === 0 ? "not-allowed" : "pointer",
                   boxShadow: isTtsPlaying ? "0 2px 10px rgba(239,68,68,0.3)" : "0 2px 10px rgba(37,99,235,0.3)",
                   opacity: isTtsLoading || activeParagraphs.length === 0 ? 0.6 : 1,
                   transition: "all 0.15s ease",
+                  width: isMobileScreen ? "100%" : "auto",
                 }}
               >
                 {isTtsLoading ? (
@@ -2651,17 +2649,17 @@ export const ReaderSection: React.FC = () => {
                         animation: "spin 0.8s linear infinite",
                       }}
                     />
-                    Đang nạp âm thanh...
+                    <span>Đang nạp âm thanh...</span>
                   </>
                 ) : isTtsPlaying ? (
                   <>
                     <Pause size={16} />
-                    Tạm dừng Audio
+                    <span>Tạm dừng Audio</span>
                   </>
                 ) : (
                   <>
                     <Play size={16} />
-                    Đọc Audio (Tự động lật trang)
+                    <span>Đọc Audio (Tự động lật trang)</span>
                   </>
                 )}
               </button>
@@ -2672,7 +2670,7 @@ export const ReaderSection: React.FC = () => {
                   type="button"
                   onClick={handleStopTts}
                   style={{
-                    padding: "0.5rem 0.65rem",
+                    padding: "0.45rem 0.65rem",
                     background: "var(--bg-elevated)",
                     color: "var(--text)",
                     border: "1px solid var(--border)",
@@ -2685,14 +2683,14 @@ export const ReaderSection: React.FC = () => {
                   }}
                   title="Dừng phát Audio"
                 >
-                  <Square size={14} />
-                  Dừng
+                  <Square size={13} />
+                  <span>Dừng</span>
                 </button>
               )}
 
               {/* Voice Selector: Giọng Nhân Bản Thật vs Giọng Trình Duyệt */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <Headphones size={15} style={{ color: "var(--accent-gold)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flex: isMobileScreen ? "1 1 100%" : "initial", minWidth: 0 }}>
+                <Headphones size={15} style={{ color: "var(--accent-gold)", flexShrink: 0 }} />
                 <select
                   value={ttsVoiceId}
                   onChange={(e) => {
@@ -2701,14 +2699,17 @@ export const ReaderSection: React.FC = () => {
                     stopTts();
                   }}
                   style={{
-                    padding: "0.4rem 0.75rem",
+                    padding: "0.4rem 0.65rem",
                     background: "var(--bg-elevated)",
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius-xs)",
                     color: "var(--text)",
-                    fontSize: "0.82rem",
+                    fontSize: "0.8rem",
                     fontWeight: 700,
                     outline: "none",
+                    width: isMobileScreen ? "100%" : "auto",
+                    maxWidth: isMobileScreen ? "100%" : "260px",
+                    textOverflow: "ellipsis",
                   }}
                   title="Chọn giọng đọc audio"
                 >
@@ -2723,8 +2724,8 @@ export const ReaderSection: React.FC = () => {
               </div>
 
               {/* Speed Selector */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <FastForward size={15} style={{ color: "var(--text-muted)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flex: isMobileScreen ? "1 1 auto" : "initial" }}>
+                <FastForward size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                 <select
                   value={ttsSpeed.toString()}
                   onChange={(e) => {
@@ -2734,7 +2735,7 @@ export const ReaderSection: React.FC = () => {
                     stopTts();
                   }}
                   style={{
-                    padding: "0.4rem 0.6rem",
+                    padding: "0.4rem 0.55rem",
                     background: "var(--bg-elevated)",
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius-xs)",
@@ -2743,12 +2744,13 @@ export const ReaderSection: React.FC = () => {
                     fontWeight: 650,
                     outline: "none",
                     cursor: "pointer",
+                    width: isMobileScreen ? "100%" : "auto",
                   }}
                   title="Chọn tốc độ đọc"
                 >
-                  <option value="1">1.0x (Chuẩn - Mặc định) ★</option>
-                  <option value="0.7">0.7x (Rất chậm - Rõ nhất)</option>
-                  <option value="0.8">0.8x (Chậm - Rõ)</option>
+                  <option value="1">1.0x (Chuẩn) ★</option>
+                  <option value="0.7">0.7x (Rất chậm)</option>
+                  <option value="0.8">0.8x (Chậm)</option>
                   <option value="0.9">0.9x (Vừa phải)</option>
                   <option value="1.15">1.15x (Nhanh)</option>
                   <option value="1.3">1.3x (Rất nhanh)</option>
@@ -2762,33 +2764,34 @@ export const ReaderSection: React.FC = () => {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.4rem",
-                    padding: "0.35rem 0.75rem",
+                    gap: "0.35rem",
+                    padding: "0.3rem 0.65rem",
                     background: "rgba(34, 197, 94, 0.15)",
                     border: "1px solid rgba(34, 197, 94, 0.3)",
                     borderRadius: "12px",
-                    fontSize: "0.76rem",
+                    fontSize: "0.74rem",
                     fontWeight: 700,
                     color: "#16a34a",
+                    width: isMobileScreen ? "100%" : "auto",
+                    justifyContent: isMobileScreen ? "center" : "flex-start",
                   }}
                 >
                   <span
                     style={{
-                      width: "8px",
-                      height: "8px",
+                      width: "7px",
+                      height: "7px",
                       borderRadius: "50%",
                       background: "#22c55e",
                       animation: "pulse 1.5s infinite",
                     }}
                   />
-                  Đang đọc trang {readingPageNum || currentPage}
-                  {autoNextPage && " ➔ Tự động sang trang"}
+                  <span>Đang đọc trang {readingPageNum || currentPage}</span>
                 </div>
               )}
             </div>
 
             {/* Right: Ambient Sound, Sleep Timer, Audio Scrubber, Download Button & Auto Next Page Toggle */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", width: isMobileScreen ? "100%" : "auto" }}>
               {/* 🎧 Ambient Background Music Menu */}
               <div style={{ position: "relative" }}>
                 <button

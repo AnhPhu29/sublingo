@@ -3428,19 +3428,47 @@ button, a, input, select, textarea {
     display: none !important;
   }
 
+  html,
+  body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box !important;
+  }
+
+  .sublingo-rail {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+  }
+
   .sublingo-layout-content {
     margin-left: 0 !important;
-    margin-bottom: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    margin-bottom: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: hidden !important;
   }
 
   .sublingo-topbar {
-    height: 56px !important;
-    padding: 0 0.85rem !important;
+    height: 54px !important;
+    padding: 0 0.65rem !important;
+    width: 100% !important;
+    max-width: 100vw !important;
   }
 
   .sublingo-content {
-    padding: 12px 10px 24px !important;
-    gap: 1rem !important;
+    padding: 10px 8px 32px !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
   }
 
   .desktop-only {
@@ -3459,7 +3487,8 @@ button, a, input, select, textarea {
   .reader-top-tab-container {
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 0.75rem !important;
+    gap: 0.65rem !important;
+    padding: 0.65rem 0.75rem !important;
   }
 
   .reader-top-tab-container .tab-btn-group {
@@ -3468,24 +3497,36 @@ button, a, input, select, textarea {
   }
 
   .reader-controls-bar {
-    padding: 0.65rem 0.75rem !important;
+    padding: 0.65rem 0.65rem !important;
     gap: 0.5rem !important;
+    width: 100% !important;
   }
 
   .reader-tts-bar {
-    padding: 0.75rem !important;
+    padding: 0.65rem 0.75rem !important;
     gap: 0.6rem !important;
+    width: 100% !important;
+  }
+
+  .reader-paper-canvas {
+    padding: 0.5rem 0.25rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
   }
 
   .reader-paper-sheet {
-    padding: 1.5rem 1rem !important;
-    min-height: 480px !important;
+    padding: 1.25rem 0.85rem !important;
+    min-height: 440px !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .reader-pagination-bar {
     flex-direction: column !important;
     gap: 0.75rem !important;
     align-items: stretch !important;
+    width: 100% !important;
   }
 
   .reader-pagination-bar > div {
