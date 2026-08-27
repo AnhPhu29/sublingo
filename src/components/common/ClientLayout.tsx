@@ -5,14 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Clapperboard,
-  ScanText,
   Subtitles,
-  FileText,
-  Mic,
   Volume2,
-  Sparkles,
-  History,
-  ChevronLeft,
   ChevronRight,
   Sun,
   Moon,
@@ -22,6 +16,8 @@ import {
   Combine,
   Smartphone,
   BookOpen,
+  Menu,
+  X,
 } from "lucide-react";
 import { useSubLingo } from "@/context/SubLingoContext";
 import { GeminiKeyModal } from "./GeminiKeyModal";
@@ -30,6 +26,8 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
   const pathname = usePathname() || "";
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const {
     uiLang,
     setUiLang,
@@ -47,12 +45,42 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [router]);
 
+  // Close mobile drawer when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   const navigationItems = [
-    { href: "/editor", label: uiLang === "vi" ? "Trình soạn thảo Phụ đề & Lồng tiếng AI" : "Subtitle & AI Dubbing Editor", icon: Subtitles },
-    { href: "/convert-ratio", label: uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16 (TikTok/Reels)" : "Convert 16:9 to 9:16", icon: Smartphone },
-    { href: "/tts", label: uiLang === "vi" ? "Tạo giọng đọc AI (TTS)" : "Text to Speech (TTS)", icon: Volume2 },
-    { href: "/merge", label: uiLang === "vi" ? "Ghép nhiều video" : "Merge Videos", icon: Combine },
-    { href: "/reader", label: uiLang === "vi" ? "Đọc sách PDF & Scan OCR" : "PDF Book Reader & OCR", icon: BookOpen },
+    {
+      href: "/editor",
+      label: uiLang === "vi" ? "Trình soạn thảo Phụ đề" : "Subtitle Editor",
+      shortLabel: "Soạn thảo",
+      icon: Subtitles,
+    },
+    {
+      href: "/convert-ratio",
+      label: uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16" : "Convert 16:9 to 9:16",
+      shortLabel: "9:16 Reel",
+      icon: Smartphone,
+    },
+    {
+      href: "/tts",
+      label: uiLang === "vi" ? "Tạo giọng đọc AI (TTS)" : "Text to Speech",
+      shortLabel: "Giọng AI",
+      icon: Volume2,
+    },
+    {
+      href: "/merge",
+      label: uiLang === "vi" ? "Ghép nhiều video" : "Merge Videos",
+      shortLabel: "Ghép Video",
+      icon: Combine,
+    },
+    {
+      href: "/reader",
+      label: uiLang === "vi" ? "Đọc sách PDF & Scan OCR" : "PDF Book Reader",
+      shortLabel: "Đọc Sách",
+      icon: BookOpen,
+    },
   ];
 
   const sidebarWidth = "70px";
@@ -67,7 +95,7 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      {/* 1. Collapsible Sidebar */}
+      {/* 1. Desktop Sidebar Rail */}
       <aside
         className="sublingo-rail"
         style={{
@@ -152,7 +180,6 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
             title={uiLang === "vi" ? "Cấu hình Gemini API Key" : "Configure Gemini API Key"}
           >
             <Key size={18} style={{ flexShrink: 0 }} />
-            {!sidebarCollapsed && <span>Gemini Key</span>}
           </button>
         </nav>
 
@@ -181,8 +208,99 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
         </div>
       </aside>
 
-      {/* Right Column Content Area */}
+      {/* 2. Mobile Offcanvas Navigation Drawer */}
+      {isMobileMenuOpen && (
+        <>
+          <div className="mobile-drawer-overlay" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="mobile-drawer">
+            <div
+              style={{
+                height: "60px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0 1.25rem",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Clapperboard size={22} style={{ color: "var(--accent-gold)" }} />
+                <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>SubLingo AI</span>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  padding: "0.4rem",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <nav style={{ flex: 1, padding: "1rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              {navigationItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      padding: "0.75rem 1rem",
+                      borderRadius: "var(--radius-sm)",
+                      color: isActive ? "var(--accent-gold)" : "var(--text)",
+                      background: isActive ? "var(--accent-soft)" : "transparent",
+                      textDecoration: "none",
+                      fontWeight: isActive ? 700 : 500,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    <item.icon size={18} style={{ flexShrink: 0 }} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+
+              <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border)", paddingTop: "1rem" }}>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsGeminiKeyModalOpen(true);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    padding: "0.75rem 1rem",
+                    borderRadius: "var(--radius-sm)",
+                    color: "var(--accent-gold)",
+                    background: "var(--accent-soft)",
+                    border: "none",
+                    width: "100%",
+                    fontWeight: 650,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Key size={18} style={{ flexShrink: 0 }} />
+                  <span>Cấu hình Gemini API Key</span>
+                </button>
+              </div>
+            </nav>
+          </div>
+        </>
+      )}
+
+      {/* 3. Right Column Content Area */}
       <div
+        className="sublingo-layout-content"
         style={{
           flex: 1,
           marginLeft: sidebarWidth,
@@ -192,7 +310,7 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
           minWidth: 0,
         }}
       >
-        {/* 2. Top Header */}
+        {/* Top Header */}
         <header
           className="sublingo-topbar"
           style={{
@@ -207,25 +325,56 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
             zIndex: 90,
           }}
         >
-          {/* Left: Breadcrumbs or simple status */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-            <span style={{ fontSize: "1rem", color: "var(--text)", fontWeight: 700 }}>
-              {pathname === "/extract" && (uiLang === "vi" ? "Trích xuất phụ đề" : "Extract Subtitle")}
-              {pathname === "/editor" && (uiLang === "vi" ? "Trình soạn thảo" : "Subtitle Editor")}
-              {pathname === "/tts" && (uiLang === "vi" ? "Chuyển văn bản thành giọng nói (TTS)" : "Text to Speech")}
-              {pathname === "/merge" && (uiLang === "vi" ? "Ghép nối nhiều video" : "Merge Videos")}
-              {pathname === "/reader" && (uiLang === "vi" ? "Đọc sách PDF & Scan OCR" : "PDF Book Reader & OCR")}
-              {pathname === "/convert-ratio" && (uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16" : "Convert 16:9 to 9:16")}
-            </span>
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-              {uiLang === "vi"
-                ? "Biên dịch và quản lý phụ đề video bằng AI"
-                : "Translate and manage video subtitles with AI"}
-            </span>
+          {/* Left: Mobile Hamburger & Title */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", minWidth: 0 }}>
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="mobile-only"
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text)",
+                padding: "0.4rem",
+                cursor: "pointer",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              title="Mở menu"
+            >
+              <Menu size={22} />
+            </button>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem", minWidth: 0 }}>
+              <span
+                style={{
+                  fontSize: "0.95rem",
+                  color: "var(--text)",
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {pathname === "/extract" && (uiLang === "vi" ? "Trích xuất phụ đề" : "Extract Subtitle")}
+                {pathname === "/editor" && (uiLang === "vi" ? "Trình soạn thảo Phụ đề" : "Subtitle Editor")}
+                {pathname === "/tts" && (uiLang === "vi" ? "Tạo giọng đọc AI (TTS)" : "Text to Speech")}
+                {pathname === "/merge" && (uiLang === "vi" ? "Ghép nối video" : "Merge Videos")}
+                {pathname === "/reader" && (uiLang === "vi" ? "Đọc sách 3D & Audio AI" : "PDF Book Reader & Audio")}
+                {pathname === "/convert-ratio" && (uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16" : "Convert 16:9 to 9:16")}
+              </span>
+              <span
+                className="desktop-only"
+                style={{ fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              >
+                {uiLang === "vi"
+                  ? "Biên dịch và quản lý phụ đề video bằng AI"
+                  : "Translate and manage video subtitles with AI"}
+              </span>
+            </div>
           </div>
 
           {/* Right Controls */}
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
             {/* Language Switcher */}
             <button
               onClick={toggleLanguage}
@@ -236,10 +385,10 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: "0.35rem",
-                fontSize: "0.85rem",
+                gap: "0.3rem",
+                fontSize: "0.82rem",
                 fontWeight: 600,
-                padding: "0.5rem",
+                padding: "0.4rem",
                 borderRadius: "var(--radius-xs)",
               }}
               title={uiLang === "vi" ? "Chuyển sang Tiếng Anh" : "Switch to Vietnamese"}
@@ -256,7 +405,7 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
                 border: "none",
                 color: "var(--text)",
                 cursor: "pointer",
-                padding: "0.5rem",
+                padding: "0.4rem",
                 display: "flex",
                 alignItems: "center",
                 borderRadius: "var(--radius-xs)",
@@ -267,11 +416,11 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
             </button>
 
             {/* User Avatar */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderLeft: "1px solid var(--border)", paddingLeft: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderLeft: "1px solid var(--border)", paddingLeft: "0.75rem" }}>
               <div
                 style={{
-                  width: "32px",
-                  height: "32px",
+                  width: "30px",
+                  height: "30px",
                   borderRadius: "50%",
                   background: "var(--bg-elevated-2)",
                   display: "flex",
@@ -280,7 +429,7 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
                   color: "var(--accent-gold)",
                 }}
               >
-                <User size={16} />
+                <User size={15} />
               </div>
               <span style={{ fontSize: "0.85rem", fontWeight: 550 }} className="desktop-only">
                 User
@@ -289,20 +438,22 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
           </div>
         </header>
 
-        {/* 3. Main Page Body */}
-        <main className="sublingo-content" style={{ flex: 1, padding: "24px 32px 32px", display: "flex", flexDirection: "column", gap: "2rem" }}>
+        {/* Main Page Body */}
+        <main className="sublingo-content" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {children}
         </main>
 
-        {/* 4. Common Footer */}
+        {/* Common Footer */}
         <footer
           style={{
             background: "var(--bg-elevated)",
             borderTop: "1px solid var(--border)",
-            padding: "1.5rem 2rem",
+            padding: "1.25rem 1.5rem",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.75rem",
             fontSize: "0.8rem",
             color: "var(--text-muted)",
           }}
@@ -318,12 +469,26 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
             <a href="#" style={{ color: "inherit", textDecoration: "none" }}>
               {uiLang === "vi" ? "Bảo mật" : "Privacy"}
             </a>
-            <a href="#" style={{ color: "inherit", textDecoration: "none" }}>
-              {uiLang === "vi" ? "Liên hệ" : "Contact"}
-            </a>
           </div>
         </footer>
       </div>
+
+      {/* 4. Mobile Quick Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav">
+        {navigationItems.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`mobile-nav-tab ${isActive ? "active" : ""}`}
+            >
+              <item.icon size={20} />
+              <span>{item.shortLabel}</span>
+            </Link>
+          );
+        })}
+      </nav>
 
       {/* Gemini Modal */}
       {isGeminiKeyModalOpen && (
@@ -336,3 +501,4 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
     </div>
   );
 };
+

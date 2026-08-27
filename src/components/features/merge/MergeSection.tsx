@@ -504,7 +504,7 @@ export const MergeSection: React.FC<MergeSectionProps> = ({ showToast }) => {
       </div>
 
       {/* Main Content Area */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.75rem" }}>
+      <div className="merge-workspace-grid" style={{ gap: "1.75rem" }}>
         {/* Left Column: Upload Zone & Video Ordering List */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {/* Upload Dropzone */}

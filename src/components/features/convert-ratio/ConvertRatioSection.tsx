@@ -174,7 +174,7 @@ export const ConvertRatioSection: React.FC<ConvertRatioSectionProps> = ({ showTo
       </div>
 
       {/* MAIN TWO-COLUMN WORKSPACE GRID */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", gap: "1.5rem", alignItems: "start" }}>
+      <div className="convert-ratio-workspace-grid" style={{ alignItems: "start" }}>
         
         {/* LEFT COLUMN: SOURCE UPLOAD + MODE SELECTOR + OUTPUT SETTINGS */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
@@ -249,7 +249,7 @@ export const ConvertRatioSection: React.FC<ConvertRatioSectionProps> = ({ showTo
               <Layers size={18} style={{ color: "#8B5CF6" }} /> 2. Chọn Chế độ Biến đổi Tỷ lệ (16:9 ➔ 9:16)
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.85rem" }}>
+            <div className="convert-ratio-mode-grid" style={{ gap: "0.85rem" }}>
               
               {/* Option A: Blur Background CapCut */}
               <div

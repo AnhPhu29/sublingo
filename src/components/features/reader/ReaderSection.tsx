@@ -562,6 +562,31 @@ export const ReaderSection: React.FC = () => {
     }
   };
 
+  // ── Touch Gesture Swiping for Mobile & Tablet (Lướt ngón tay sang trái/phải để lật trang) ──
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+      if (deltaX < 0) {
+        goToNextPage();
+      } else {
+        goToPrevPage();
+      }
+    }
+  };
+
   // ── Sleep Timer: Đếm ngược & Tự động dừng audio khi hết giờ ───────────────
   useEffect(() => {
     if (sleepTimerRemainingSec === null) return;
@@ -1315,6 +1340,7 @@ export const ReaderSection: React.FC = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       {/* ── TOP NAV BAR (TAB SWITCHER: ĐANG ĐỌC / TỦ SÁCH / THÊM SÁCH) ──────── */}
       <div
+        className="reader-top-tab-container"
         style={{
           display: "flex",
           alignItems: "center",
@@ -1339,6 +1365,7 @@ export const ReaderSection: React.FC = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
             <BookOpen size={20} />
@@ -1355,6 +1382,7 @@ export const ReaderSection: React.FC = () => {
 
         {/* Tab Buttons */}
         <div
+          className="tab-btn-group"
           style={{
             display: "flex",
             alignItems: "center",
@@ -1362,6 +1390,7 @@ export const ReaderSection: React.FC = () => {
             background: "var(--bg-elevated-2)",
             padding: "4px",
             borderRadius: "var(--radius-xs)",
+            flexWrap: "wrap",
           }}
         >
           {currentBook && (
@@ -1515,6 +1544,7 @@ export const ReaderSection: React.FC = () => {
 
           {/* Bookshelf Grid */}
           <div
+            className="reader-library-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
@@ -2109,6 +2139,7 @@ export const ReaderSection: React.FC = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {/* Top Reading Controls Toolbar */}
           <div
+            className="reader-controls-bar"
             style={{
               background: "var(--card)",
               border: "1px solid var(--border)",
@@ -2572,6 +2603,7 @@ export const ReaderSection: React.FC = () => {
 
           {/* ── TTS AUDIO BOOK PLAYER CONTROL BAR ─────────────────────────── */}
           <div
+            className="reader-tts-bar"
             style={{
               background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(2,132,199,0.08))",
               border: "1px solid rgba(37,99,235,0.25)",
@@ -3138,6 +3170,9 @@ export const ReaderSection: React.FC = () => {
 
             {/* ── AUTHENTIC BOOK PAPER CANVAS ─────────────────────────────── */}
             <div
+              className="reader-paper-canvas"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
               style={{
                 flex: 1,
                 background: themeStyle.outerCanvasBg,
@@ -3147,6 +3182,7 @@ export const ReaderSection: React.FC = () => {
                 flexDirection: "column",
                 alignItems: "center",
                 overflow: "hidden",
+                touchAction: "pan-y pinch-zoom",
               }}
             >
               {/* CSS Keyframes cho hiệu ứng lật trang 3D vật lý */}
@@ -3468,6 +3504,7 @@ export const ReaderSection: React.FC = () => {
               ) : (
                 /* CHẾ ĐỘ DÀN CHỮ REFLOW: HIỂN THỊ KHUNG GIẤY VÀ CÁC THÔNG SỐ TÙY BIẾN */
                 <div
+                  className="reader-paper-sheet"
                   style={{
                     maxWidth: "760px",
                     width: "100%",
@@ -3657,6 +3694,7 @@ export const ReaderSection: React.FC = () => {
 
               {/* Bottom Pagination & Navigation Controls */}
               <div
+                className="reader-pagination-bar"
                 style={{
                   maxWidth: "800px",
                   width: "100%",
