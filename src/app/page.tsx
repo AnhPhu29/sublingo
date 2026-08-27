@@ -1,5 +1,6 @@
-import { StudioWorkspace } from "@/components/studio/StudioWorkspace";
+import ReaderPage from "./reader/page";
 
 export default function RootPage() {
-  return <StudioWorkspace initialTab="stt" />;
+  return <ReaderPage />;
 }
+

@@ -63,34 +63,35 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
 
   const navigationItems = [
     {
+      href: "/reader",
+      label: uiLang === "vi" ? "Đọc sách 3D & Audio AI" : "3D Book Reader & Audio AI",
+      shortLabel: "Đọc Sách",
+      icon: BookOpen,
+      isPrimary: true,
+    },
+    {
       href: "/editor",
-      label: uiLang === "vi" ? "Trình soạn thảo Phụ đề" : "Subtitle Editor",
+      label: uiLang === "vi" ? "Trình soạn thảo Phụ đề (Local)" : "Subtitle Editor (Local)",
       shortLabel: "Soạn thảo",
       icon: Subtitles,
     },
     {
-      href: "/convert-ratio",
-      label: uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16" : "Convert 16:9 to 9:16",
-      shortLabel: "9:16 Reel",
-      icon: Smartphone,
-    },
-    {
       href: "/tts",
-      label: uiLang === "vi" ? "Tạo giọng đọc AI (TTS)" : "Text to Speech",
+      label: uiLang === "vi" ? "Tạo giọng đọc AI (Local)" : "Text to Speech (Local)",
       shortLabel: "Giọng AI",
       icon: Volume2,
     },
     {
-      href: "/merge",
-      label: uiLang === "vi" ? "Ghép nhiều video" : "Merge Videos",
-      shortLabel: "Ghép Video",
-      icon: Combine,
+      href: "/convert-ratio",
+      label: uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16 (Local)" : "Convert 16:9 to 9:16",
+      shortLabel: "9:16 Reel",
+      icon: Smartphone,
     },
     {
-      href: "/reader",
-      label: uiLang === "vi" ? "Đọc sách PDF & Scan OCR" : "PDF Book Reader",
-      shortLabel: "Đọc Sách",
-      icon: BookOpen,
+      href: "/merge",
+      label: uiLang === "vi" ? "Ghép nhiều video (Local)" : "Merge Videos (Local)",
+      shortLabel: "Ghép Video",
+      icon: Combine,
     },
   ];
 
@@ -369,20 +370,20 @@ export const ClientLayout: React.FC<{ children: React.ReactNode }> = ({ children
                   textOverflow: "ellipsis",
                 }}
               >
+                {(pathname === "/" || pathname === "/reader") && (uiLang === "vi" ? "SubLingo Reader • Đọc Sách 3D & Audio AI" : "SubLingo Reader • 3D Book & Audio AI")}
+                {pathname === "/editor" && (uiLang === "vi" ? "Trình soạn thảo Phụ đề (Local)" : "Subtitle Editor (Local)")}
+                {pathname === "/tts" && (uiLang === "vi" ? "Tạo giọng đọc AI (Local)" : "Text to Speech (Local)")}
+                {pathname === "/merge" && (uiLang === "vi" ? "Ghép nối video (Local)" : "Merge Videos (Local)")}
+                {pathname === "/convert-ratio" && (uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16 (Local)" : "Convert 16:9 to 9:16 (Local)")}
                 {pathname === "/extract" && (uiLang === "vi" ? "Trích xuất phụ đề" : "Extract Subtitle")}
-                {pathname === "/editor" && (uiLang === "vi" ? "Trình soạn thảo Phụ đề" : "Subtitle Editor")}
-                {pathname === "/tts" && (uiLang === "vi" ? "Tạo giọng đọc AI (TTS)" : "Text to Speech")}
-                {pathname === "/merge" && (uiLang === "vi" ? "Ghép nối video" : "Merge Videos")}
-                {pathname === "/reader" && (uiLang === "vi" ? "Đọc sách 3D & Audio AI" : "PDF Book Reader & Audio")}
-                {pathname === "/convert-ratio" && (uiLang === "vi" ? "Biến đổi 16:9 ➔ 9:16" : "Convert 16:9 to 9:16")}
               </span>
               <span
                 className="desktop-only"
                 style={{ fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
               >
-                {uiLang === "vi"
-                  ? "Biên dịch và quản lý phụ đề video bằng AI"
-                  : "Translate and manage video subtitles with AI"}
+                {(pathname === "/" || pathname === "/reader")
+                  ? (uiLang === "vi" ? "Đọc sách PDF, lật trang 3D, nghe giọng đọc Ngọc Huyền Pro & Hoài My" : "PDF Book reading, 3D flip, Ngoc Huyen Pro & Hoai My Audio AI")
+                  : (uiLang === "vi" ? "Công cụ xử lý Studio Media trên máy tính" : "Local Studio Media Processing Tools")}
               </span>
             </div>
           </div>
