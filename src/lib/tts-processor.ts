@@ -62,15 +62,15 @@ async function adjustAudioTempo(
   const filterStr = getAtempoFilters(ratio);
   // -threads 2: Giới hạn CPU để không tranh chấp tài nguyên với các batch song song
   await runCommandAsync(
-    `ffmpeg -threads 2 -i "${inputPath}" -filter:a "${filterStr}" -y "${outputPath}"`
+    `ffmpeg -threads 2 -i "${inputPath}" -filter:a "${filterStr}" -ar 24000 -ac 1 -c:a pcm_s16le -y "${outputPath}"`
   );
 }
 
 /**
- * Tạo file im lặng (silence) với duration chỉ định siêu tốc trong RAM.
+ * Tạo file im lặng (silence) với duration chỉ định siêu tốc trong RAM (Chuẩn 24000Hz Mono 16-bit).
  */
 async function createSilenceFile(outputPath: string, durationMs: number): Promise<void> {
-  createWavSilenceFileFast(outputPath, durationMs);
+  createWavSilenceFileFast(outputPath, durationMs, 24000, 1, 16);
 }
 
 /**
@@ -87,7 +87,7 @@ async function getGlobalSilenceFile(uploadsDir: string, durMs: number): Promise<
     fs.mkdirSync(silenceCacheDir, { recursive: true });
   }
   const cleanDur = Math.max(50, Math.round(durMs));
-  const silPath = path.join(silenceCacheDir, `sil_${cleanDur}ms.wav`);
+  const silPath = path.join(silenceCacheDir, `sil_${cleanDur}ms_24k.wav`);
   if (!fs.existsSync(silPath)) {
     await createSilenceFile(silPath, cleanDur);
   }
@@ -363,7 +363,7 @@ export async function processTtsJob(jobId: string) {
               const clampedPath = path.join(uploadsDir, `${jobId}_seg_${idx}_clamped.wav`);
               const targetSec = (targetDurationMs / 1000).toFixed(3);
               await runCommandAsync(
-                `ffmpeg -threads 1 -i "${tempoPath}" -t ${targetSec} -c copy -y "${clampedPath}"`
+                `ffmpeg -threads 1 -i "${tempoPath}" -t ${targetSec} -ar 24000 -ac 1 -c:a pcm_s16le -y "${clampedPath}"`
               );
               tempFilesToClean.push(clampedPath);
               segmentAudioPaths[idx] = clampedPath;

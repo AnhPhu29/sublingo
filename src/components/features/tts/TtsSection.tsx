@@ -401,6 +401,7 @@ export const TtsSection: React.FC<TtsSectionProps> = ({
           globalVoiceId,
           ttsVolume: 1.0,
           pauseDurationMs: 400,
+          hasOriginalTimestamps,
         }),
       });
 

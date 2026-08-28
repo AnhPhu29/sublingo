@@ -186,7 +186,7 @@ export async function getAudioDurationMsSmart(filePath: string): Promise<number>
 export function createWavSilenceFileFast(
   outputPath: string,
   durationMs: number,
-  sampleRate: number = 48000,
+  sampleRate: number = 24000,
   numChannels: number = 1,
   bitsPerSample: number = 16
 ): void {
