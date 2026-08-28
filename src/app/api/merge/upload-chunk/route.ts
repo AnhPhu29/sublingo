@@ -79,6 +79,11 @@ export async function POST(request: Request) {
     }
 
     partFilePath = path.join(uploadsDir, `chunk_${uploadId}.part`);
+    if (chunkIndex === 0 && fs.existsSync(partFilePath)) {
+      try {
+        fs.unlinkSync(partFilePath);
+      } catch (e) {}
+    }
 
     // Ghi nối tiếp (Buffer append) từng chunk -> An toàn 100% trên Windows OS, không lỗi stream pipeline
     const chunkBuffer = Buffer.from(chunkArrayBuffer);

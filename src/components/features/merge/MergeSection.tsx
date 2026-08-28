@@ -277,8 +277,8 @@ export const MergeSection: React.FC<MergeSectionProps> = ({ showToast }) => {
       } catch (e) {}
     }
 
-    // 2. Tải lên theo các khối 20MB (Chunked Stream) mượt mà, tránh lỗi Payload Too Large
-    const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB per chunk
+    // 2. Tải lên theo các khối 5MB (Chuẩn an toàn dưới ngưỡng 10MB của Next.js/Vercel)
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
     const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
     const uploadId = "up_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
 
