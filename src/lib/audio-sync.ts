@@ -190,7 +190,7 @@ export function createWavSilenceFileFast(
   numChannels: number = 1,
   bitsPerSample: number = 16
 ): void {
-  const cleanDur = Math.max(50, Math.round(durationMs));
+  const cleanDur = Math.max(10, Math.round(durationMs));
   const numSamples = Math.floor((cleanDur / 1000) * sampleRate);
   const blockAlign = (numChannels * bitsPerSample) / 8;
   const byteRate = sampleRate * blockAlign;

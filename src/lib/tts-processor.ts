@@ -86,7 +86,7 @@ async function getGlobalSilenceFile(uploadsDir: string, durMs: number): Promise<
   if (!fs.existsSync(silenceCacheDir)) {
     fs.mkdirSync(silenceCacheDir, { recursive: true });
   }
-  const cleanDur = Math.max(50, Math.round(durMs));
+  const cleanDur = Math.max(10, Math.round(durMs));
   const silPath = path.join(silenceCacheDir, `sil_${cleanDur}ms_24k.wav`);
   if (!fs.existsSync(silPath)) {
     await createSilenceFile(silPath, cleanDur);
@@ -345,6 +345,11 @@ export async function processTtsJob(jobId: string) {
           seg.endMs > seg.startMs
         ) {
           const targetDurationMs = seg.endMs - seg.startMs;
+          const nextSeg = segments[idx + 1];
+          const maxAllowedSlotMs = (nextSeg && typeof nextSeg.startMs === "number" && nextSeg.startMs > seg.startMs)
+            ? (nextSeg.startMs - seg.startMs)
+            : targetDurationMs;
+
           const actualDurationMs = await getAudioDurationMs(origFilePath);
           durationMap.set(origFilePath, actualDurationMs);
 
@@ -356,18 +361,19 @@ export async function processTtsJob(jobId: string) {
             await adjustAudioTempo(origFilePath, tempoPath, tempoToApply);
             tempFilesToClean.push(tempoPath);
 
-            const tempoDurationMs = await getAudioDurationMs(tempoPath);
+            let tempoDurationMs = await getAudioDurationMs(tempoPath);
 
-            if (ratio > TTS_SRT_MAX_TEMPO && tempoDurationMs > targetDurationMs) {
-              // Câu quá dài trong khung quá ngắn → cắt vừa đúng targetDurationMs
+            // Bắt buộc: Âm thanh không được vượt quá maxAllowedSlotMs để không đẩy câu sau bị trễ!
+            if (tempoDurationMs > maxAllowedSlotMs) {
               const clampedPath = path.join(uploadsDir, `${jobId}_seg_${idx}_clamped.wav`);
-              const targetSec = (targetDurationMs / 1000).toFixed(3);
+              const targetSec = (maxAllowedSlotMs / 1000).toFixed(3);
               await runCommandAsync(
                 `ffmpeg -threads 1 -i "${tempoPath}" -t ${targetSec} -ar 24000 -ac 1 -c:a pcm_s16le -y "${clampedPath}"`
               );
               tempFilesToClean.push(clampedPath);
               segmentAudioPaths[idx] = clampedPath;
-              durationMap.set(clampedPath, targetDurationMs);
+              tempoDurationMs = maxAllowedSlotMs;
+              durationMap.set(clampedPath, maxAllowedSlotMs);
 
               const snippet = seg.text.length > 35 ? seg.text.slice(0, 35) + "..." : seg.text;
               const warnMsg = `⚠ Dòng #${idx + 1} ("${snippet}"): Cần ${actualDurationMs}ms nhưng khung SRT chỉ có ${targetDurationMs}ms. Đã ép tăng tốc tối đa ${TTS_SRT_MAX_TEMPO}x. Vui lòng rút ngắn bớt văn bản dòng này nếu cần.`;
@@ -413,7 +419,7 @@ export async function processTtsJob(jobId: string) {
     const jobSilenceCache = new Map<number, string>();
 
     const getOrMakeSilenceFile = async (durMs: number): Promise<string> => {
-      const cleanDur = Math.max(50, Math.round(durMs));
+      const cleanDur = Math.max(10, Math.round(durMs));
       if (jobSilenceCache.has(cleanDur)) return jobSilenceCache.get(cleanDur)!;
       // Dùng global persistent cache → không tạo lại nếu đã có từ job trước
       const sPath = await getGlobalSilenceFile(uploadsDir, cleanDur);
@@ -433,7 +439,7 @@ export async function processTtsJob(jobId: string) {
         // Chèn chính xác khoảng im lặng để đưa audio về đúng timestamp của SRT
         if (seg.startMs > currentAudioTimelineMs) {
           const silMs = seg.startMs - currentAudioTimelineMs;
-          if (silMs >= 50) {
+          if (silMs >= 10) {
             const silFile = await getOrMakeSilenceFile(silMs);
             concatLines.push(`file '${silFile.replace(/\\/g, "/")}'`);
             currentAudioTimelineMs += silMs;
@@ -449,7 +455,7 @@ export async function processTtsJob(jobId: string) {
 
       // Văn bản tự do: chèn khoảng nghỉ pauseDurationMs giữa các câu
       if (!hasOriginalTimestamps && i < segments.length - 1) {
-        if (pauseDurationMs >= 50) {
+        if (pauseDurationMs >= 10) {
           const pauseFile = await getOrMakeSilenceFile(pauseDurationMs);
           concatLines.push(`file '${pauseFile.replace(/\\/g, "/")}'`);
           currentAudioTimelineMs += pauseDurationMs;
@@ -462,7 +468,7 @@ export async function processTtsJob(jobId: string) {
       const lastSeg = segments[segments.length - 1];
       if (typeof lastSeg.endMs === "number" && lastSeg.endMs > currentAudioTimelineMs) {
         const finalSilMs = lastSeg.endMs - currentAudioTimelineMs;
-        if (finalSilMs >= 50) {
+        if (finalSilMs >= 10) {
           const finalSilFile = await getOrMakeSilenceFile(finalSilMs);
           concatLines.push(`file '${finalSilFile.replace(/\\/g, "/")}'`);
         }
